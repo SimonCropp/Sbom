@@ -85,11 +85,13 @@ public class AuthorPackTests
     }
 
     [Test]
-    public async Task NoLockFileFails()
+    public async Task NoLockFileUsesTheAssetsFile()
     {
         var result = await AuthorPack.Pack("Author.NoLockFile", "Author.NoLockFile.csproj");
-        await Assert.That(result.Cli.ExitCode).IsNotEqualTo(0);
-        await Assert.That(result.Cli.Combined).Contains("Sbom001");
+        await Assert.That(result.Cli.ExitCode).IsEqualTo(0).Because(result.Cli.Combined);
+        var json = result.Manifest;
+        await Assert.That(AuthorPack.IsValid(json)).IsTrue();
+        await Assert.That(Scoped(Graph(json), "runtime")).Contains("pkg:nuget/Newtonsoft.Json@13.0.3");
     }
 
     [Test]

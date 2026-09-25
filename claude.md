@@ -1,7 +1,7 @@
 # Sbom
 
 An MSBuild task package that appends an SPDX 3.0.1 SBOM to a nupkg after `Pack`. Dependencies come
-from `packages.lock.json`; dependency metadata from each package's nuspec in `$(NuGetPackageRoot)`;
+from `packages.lock.json`, or `obj/project.assets.json` when there is no lock file; dependency metadata from each package's nuspec in `$(NuGetPackageRoot)`;
 the root package's identity and metadata from the nuspec packed inside the nupkg.
 
 ## Layout

@@ -2,11 +2,11 @@
 <Project>
   <PropertyGroup>
     <NoWarn>CS1591;NU1608;NU1109;PolyfillTargetsForNuget</NoWarn>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <LangVersion>preview</LangVersion>
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <PackageTags>sbom;spdx;supply-chain;msbuild;nuget;dotnet</PackageTags>
-    <Description>Adds an SPDX 3.0.1 software bill of materials to every NuGet package at pack time. Reads the NuGet lock file and the local package cache, so it runs offline in milliseconds. A drop-in replacement for Microsoft.Sbom.Targets.</Description>
+    <Description>Adds an SPDX 3.0.1 software bill of materials to every NuGet package at pack time. Reads the restore graph and the local package cache, so it runs offline in milliseconds. A drop-in replacement for Microsoft.Sbom.Targets.</Description>
     <ResolveAssemblyReferencesSilent>true</ResolveAssemblyReferencesSilent>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>

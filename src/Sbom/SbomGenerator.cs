@@ -82,18 +82,22 @@ public static class SbomGenerator
             return result;
         }
 
-        if (!File.Exists(request.LockFile))
+        // The lock file is preferred: it is committed, and RestoreLockedMode can enforce it. Without
+        // one, the assets file restore always writes holds the same resolved graph.
+        var hasLockFile = request.LockFile.Length > 0 && File.Exists(request.LockFile);
+        var hasAssetsFile = request.AssetsFile.Length > 0 && File.Exists(request.AssetsFile);
+        if (!hasLockFile && !hasAssetsFile)
         {
             diagnostics.Add(
                 new(
                     Diagnostics.LockFileMissing,
                     Severity.Error,
-                    $"'{request.LockFile}' does not exist. Set <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile> and restore, so the dependency graph is recorded."));
+                    $"Neither '{request.LockFile}' nor '{request.AssetsFile}' exists, so the dependency graph is unknown. Restore the project before packing."));
             return result;
         }
 
-        if (request.AssetsFile.Length > 0 &&
-            File.Exists(request.AssetsFile) &&
+        if (hasLockFile &&
+            hasAssetsFile &&
             File.GetLastWriteTimeUtc(request.LockFile) < File.GetLastWriteTimeUtc(request.AssetsFile).AddSeconds(-2))
         {
             diagnostics.Add(
@@ -107,7 +111,7 @@ public static class SbomGenerator
         root.Id ??= request.PackageId;
         root.Version ??= request.PackageVersion;
 
-        var dependencies = BuildDependencies(request, diagnostics);
+        var dependencies = BuildDependencies(request, hasLockFile, diagnostics);
 
         var input = new SbomInput
         {
@@ -135,9 +139,17 @@ public static class SbomGenerator
         return result;
     }
 
-    static List<SbomDependency> BuildDependencies(SbomRequest request, List<Diagnostic> diagnostics)
+    static List<SbomDependency> BuildDependencies(SbomRequest request, bool hasLockFile, List<Diagnostic> diagnostics)
     {
-        var locked = LockFile.Read(request.LockFile);
+        List<LockedDependency> locked;
+        if (hasLockFile)
+        {
+            locked = LockFile.Read(request.LockFile);
+        }
+        else
+        {
+            locked = AssetsFile.Read(request.AssetsFile);
+        }
 
         // A direct reference is build-only when every PackageReference/ProjectReference item for it,
         // across every target framework, is PrivateAssets=all.

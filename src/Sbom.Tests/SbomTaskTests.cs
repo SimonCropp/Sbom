@@ -134,13 +134,107 @@ public class SbomTaskTests
     }
 
     [Test]
-    public async Task MissingLockFileIsAnError()
+    public async Task NoLockFileAndNoAssetsFileIsAnError()
     {
         using var setup = new Setup(withLockFile: false);
         var (task, engine) = setup.Task();
 
         await Assert.That(task.Execute()).IsFalse();
         await Assert.That(engine.Errors.Single().Code).IsEqualTo(Diagnostics.LockFileMissing);
+    }
+
+    [Test]
+    public async Task FallsBackToTheAssetsFile()
+    {
+        using var setup = new Setup(withLockFile: false);
+        var assets = setup.Temp.Write(
+            "obj/project.assets.json",
+            """
+            {
+              "version": 4,
+              "targets": {
+                "net10.0": {
+                  "Dep/2.0.0": {
+                    "type": "package",
+                    "dependencies": {
+                      "Inner": "1.0.0"
+                    }
+                  },
+                  "Inner/1.0.0": {
+                    "type": "package"
+                  },
+                  "Analyzer/1.0.0": {
+                    "type": "package"
+                  }
+                },
+                "net10.0/win-x64": {
+                  "runtime.win-x64.Native/1.0.0": {
+                    "type": "package"
+                  }
+                }
+              },
+              "libraries": {
+                "Dep/2.0.0": {
+                  "sha512": "AAEC",
+                  "type": "package"
+                }
+              },
+              "projectFileDependencyGroups": {
+                "net10.0": [
+                  "Dep >= 2.0.0",
+                  "Analyzer >= 1.0.0"
+                ]
+              }
+            }
+            """);
+        var (task, engine) = setup.Task();
+        task.AssetsFile = assets;
+
+        await Assert.That(task.Execute()).IsTrue();
+        await Assert.That(engine.Warnings).IsEmpty();
+        using var archive = ZipFile.OpenRead(setup.Package);
+        var manifest = Read(archive, NupkgReader.ManifestPath);
+        await Assert.That(SpdxBuilderTests.SchemaErrors(manifest)).IsEmpty();
+
+        var json = Encoding.UTF8.GetString(manifest);
+        await Assert.That(json).Contains("pkg:nuget/Inner@1.0.0");
+        await Assert.That(json).Contains("\"hashValue\": \"000102\"");
+        await Assert.That(json).DoesNotContain("runtime.win-x64.Native");
+        await Assert.That(Scoped(json, "build")).IsEqualTo(1);
+        await Assert.That(Scoped(json, "runtime")).IsEqualTo(1);
+    }
+
+    [Test]
+    public Task AssetsGraph()
+    {
+        var graph = AssetsFile.ReadText(
+            """
+            {
+              "targets": {
+                ".NETStandard,Version=v2.0": {
+                  "A/1.0.0": { "type": "package", "dependencies": { "B": "[2.0.0, )" } },
+                  "B/2.1.0": { "type": "package" },
+                  "Lib/1.0.0": { "type": "project", "dependencies": { "B": "2.1.0" } }
+                },
+                "net10.0": {
+                  "A/1.0.0": { "type": "package" }
+                }
+              },
+              "projectFileDependencyGroups": {
+                ".NETStandard,Version=v2.0": [ "A >= 1.0.0", "Lib >= 1.0.0" ],
+                "net10.0": [ "A >= 1.0.0" ]
+              }
+            }
+            """);
+        return Verify(graph.Select(_ => $"{_.Id} {_.Version} {_.Kind} direct:{_.IsDirect} -> {string.Join(",", _.DependsOn)}"))
+            .Snapshot(
+                """
+                [
+                  A 1.0.0 Package direct:True -> b/2.1.0,
+                  B 2.1.0 Package direct:False -> ,
+                  Lib 1.0.0 Project direct:True -> b/2.1.0
+                ]
+                """);
     }
 
     [Test]

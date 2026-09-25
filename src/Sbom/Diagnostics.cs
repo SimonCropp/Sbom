@@ -35,7 +35,7 @@ public static class Diagnostics
     public static string NameFor(string code) =>
         code switch
         {
-            LockFileMissing => "NuGet lock file missing",
+            LockFileMissing => "Dependency graph unavailable",
             PackageNotFound => "Package not found",
             PackageSigned => "Package is signed",
             NuspecMissing => "Dependency metadata unavailable",

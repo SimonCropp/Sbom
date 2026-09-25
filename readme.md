@@ -15,7 +15,7 @@ NuGet package at pack time. A .NET-specific, drop-in replacement for
 Microsoft.Sbom.Targets runs sbom-tool, which runs every Component Detection detector (Maven, pip,
 Ivy, npm, Go, Gradle, and more) over the project directory, then unzips and re-zips the package.
 For a .NET package almost all of that is wasted. NuGet has already recorded the resolved
-dependency graph in `packages.lock.json`, and every dependency's license and authors sit in its
+dependency graph in `obj/project.assets.json` (or `packages.lock.json`), and every dependency's license and authors sit in its
 `.nuspec` in the local package cache.
 
 
@@ -36,7 +36,7 @@ Measured with SDK 10.0.401 on Microsoft Windows 10.0.28000, 16 logical cores, by
 Microsoft.Sbom.Targets' cost grows with the size of the project directory, because Component
 Detection walks all of it and probes for Maven, pip and Ant. The fixture above sits alone in a
 temp directory, so this is close to its best case; in a real repository the same step has been
-measured at 16 seconds. Sbom's cost depends only on the lock file and the package.
+measured at 16 seconds. Sbom's cost depends only on the restore graph and the package.
 
 To rerun, after `dotnet build src -c Release` and `dotnet build IntegrationTests -c Release`:
 
@@ -62,15 +62,10 @@ dotnet run --project IntegrationTests/IntegrationTests -c Release --no-build -- 
 
 ## Usage
 
-Enable NuGet lock files and reference the package:
+Reference the package:
 
 ```xml
-<PropertyGroup>
-  <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-</PropertyGroup>
-<ItemGroup>
-  <PackageReference Include="Sbom" Version="x.y.z" PrivateAssets="all" />
-</ItemGroup>
+<PackageReference Include="Sbom" Version="x.y.z" PrivateAssets="all" />
 ```
 
 `dotnet pack`, or a build with `GeneratePackageOnBuild`, then adds:
@@ -79,7 +74,11 @@ Enable NuGet lock files and reference the package:
  * `_manifest/spdx_3.0/manifest.spdx.json.sha256`: lowercase hex SHA-256 of the manifest, the same
    sidecar convention as sbom-tool.
 
-Restoring with `RestoreLockedMode` on CI guarantees the lock file matches what was built:
+The dependency graph comes from `packages.lock.json` when the project uses
+[lock files](https://learn.microsoft.com/nuget/consume-packages/package-references-in-project-files#locking-dependencies),
+otherwise from `obj/project.assets.json`, which restore always writes. Both hold the same resolved
+graph. A lock file has the advantage of being committed, and restoring with `RestoreLockedMode` on
+CI guarantees it matches what was built:
 
 ```xml
 <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
@@ -93,7 +92,7 @@ The document describes:
  * The package itself: id, version, supplier (from `Authors`), license, project URL, copyright,
    repository URL and commit, all read from the nuspec packed into the nupkg.
  * Every file in the nupkg, with its SHA-256.
- * Every resolved NuGet dependency from `packages.lock.json`, direct and transitive, across all
+ * Every resolved NuGet dependency, direct and transitive, across all
    target frameworks: purl (`pkg:nuget/Id@Version`), the NuGet content hash (SHA-512), supplier and
    declared license from its nuspec, and the dependency edges between packages.
  * Project references, as packages by name.
@@ -115,8 +114,7 @@ not listed.
 
 ## Migrating from Microsoft.Sbom.Targets
 
- * Replace the `Microsoft.Sbom.Targets` reference with `Sbom` and enable
-   `RestorePackagesWithLockFile`.
+ * Replace the `Microsoft.Sbom.Targets` reference with `Sbom`.
  * The manifest moves from `_manifest/spdx_2.2/` to `_manifest/spdx_3.0/`.
  * `SbomGenerationPackageSupplier` becomes `SbomSupplier`, and `SbomGenerationNamespaceBaseUri`
    becomes `SbomNamespaceBaseUri`. Package name and version come from the packed nuspec. The other
@@ -135,7 +133,7 @@ alone ([Sbom003](/docs/DiagnosticCodes.md#sbom003)). Sign after pack.
 
 | Code | Meaning | Level |
 |---|---|---|
-| [Sbom001](/docs/DiagnosticCodes.md#sbom001) | NuGet lock file missing | Error |
+| [Sbom001](/docs/DiagnosticCodes.md#sbom001) | Dependency graph unavailable | Error |
 | [Sbom002](/docs/DiagnosticCodes.md#sbom002) | Package not found | Warning |
 | [Sbom003](/docs/DiagnosticCodes.md#sbom003) | Package is signed | Warning |
 | [Sbom004](/docs/DiagnosticCodes.md#sbom004) | Dependency metadata unavailable | Message |

@@ -11,20 +11,14 @@ Every message Sbom emits carries a code, so any of them can be silenced per proj
 
 ## Sbom001
 
-**NuGet lock file missing.** Error.
+**Dependency graph unavailable.** Error.
 
-The dependency graph comes from `packages.lock.json`, and the project has none. No SBOM is written,
-since an SBOM that silently lists no dependencies is worse than a failed pack.
+The dependency graph comes from `packages.lock.json` when the project has one, otherwise from
+`obj/project.assets.json`, which restore always writes. Neither exists, so the project was not
+restored. No SBOM is written, since an SBOM that silently lists no dependencies is worse than a
+failed pack.
 
-Fix: enable lock files, then restore.
-
-```xml
-<PropertyGroup>
-  <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-</PropertyGroup>
-```
-
-A custom location set through `NuGetLockFilePath` is honoured.
+Fix: restore before packing (`dotnet pack` restores by default; `--no-restore` skips it).
 
 
 ## Sbom002

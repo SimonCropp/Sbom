@@ -1,5 +1,3 @@
-namespace Sbom.IntegrationTests;
-
 public sealed record BuiltPackage(string Feed, string Version, string NupkgPath);
 
 /// <summary>

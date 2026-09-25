@@ -1,8 +1,3 @@
-using System.Security.Cryptography;
-using System.Text.Json;
-
-namespace Sbom.IntegrationTests;
-
 public class AuthorPackTests
 {
     [Test]
@@ -31,15 +26,15 @@ public class AuthorPackTests
             .ToDictionary(
                 _ => _.GetProperty("name").GetString()!,
                 _ => _.GetProperty("verifiedUsing")[0].GetProperty("hashValue").GetString());
-        using var archive = ZipFile.OpenRead(result.Nupkg!);
+        await using var archive = await ZipFile.OpenReadAsync(result.Nupkg!);
         var entries = archive.Entries
             .Where(_ => !_.FullName.StartsWith("_manifest/", StringComparison.Ordinal))
             .ToList();
         await Assert.That(files.Count).IsEqualTo(entries.Count);
         foreach (var entry in entries)
         {
-            using var stream = entry.Open();
-            await Assert.That(files[entry.FullName]).IsEqualTo(Convert.ToHexStringLower(SHA256.HashData(stream)));
+            await using var stream = await entry.OpenAsync();
+            await Assert.That(files[entry.FullName]).IsEqualTo(Convert.ToHexStringLower(await SHA256.HashDataAsync(stream)));
         }
     }
 
@@ -85,7 +80,7 @@ public class AuthorPackTests
                 ["SbomEnabled"] = "false"
             });
         await Assert.That(result.Cli.ExitCode).IsEqualTo(0).Because(result.Cli.Combined);
-        using var archive = ZipFile.OpenRead(result.Nupkg!);
+        await using var archive = await ZipFile.OpenReadAsync(result.Nupkg!);
         await Assert.That(archive.Entries.Any(_ => _.FullName.StartsWith("_manifest/", StringComparison.Ordinal))).IsFalse();
     }
 
@@ -100,7 +95,7 @@ public class AuthorPackTests
     [Test]
     public async Task PackageShape()
     {
-        using var archive = ZipFile.OpenRead(PackageUnderTest.Ensure().NupkgPath);
+        await using var archive = await ZipFile.OpenReadAsync(PackageUnderTest.Ensure().NupkgPath);
         var entries = archive.Entries
             .Select(_ => _.FullName)
             .Where(_ => !_.StartsWith("_rels/", StringComparison.Ordinal) &&

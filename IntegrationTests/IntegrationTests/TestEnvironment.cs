@@ -1,5 +1,3 @@
-namespace Sbom.IntegrationTests;
-
 public static class TestEnvironment
 {
     static readonly Lazy<string> repoRoot = new(FindRepoRoot);

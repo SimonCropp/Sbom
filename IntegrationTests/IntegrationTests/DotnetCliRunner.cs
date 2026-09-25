@@ -1,5 +1,3 @@
-namespace Sbom.IntegrationTests;
-
 public static class DotnetCliRunner
 {
     public static async Task<CliResult> Run(
@@ -18,10 +16,13 @@ public static class DotnetCliRunner
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
-            WorkingDirectory = workingDirectory ?? Path.GetDirectoryName(Path.GetFullPath(projectPath))!
+            WorkingDirectory = workingDirectory ?? Path.GetDirectoryName(Path.GetFullPath(projectPath))!,
+            Environment =
+            {
+                ["DOTNET_NOLOGO"] = "true",
+                ["DOTNET_CLI_TELEMETRY_OPTOUT"] = "true"
+            }
         };
-        info.Environment["DOTNET_NOLOGO"] = "true";
-        info.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "true";
         if (packagesDirectory != null)
         {
             // Without an isolated package directory the global cache serves a previously restored

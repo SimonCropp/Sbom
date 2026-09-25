@@ -1,9 +1,3 @@
-using System.Globalization;
-using System.Runtime.InteropServices;
-using System.Text.Json;
-
-namespace Sbom.IntegrationTests;
-
 /// <summary>
 /// Compares Sbom with Microsoft.Sbom.Targets on a package with a realistic dependency load, and
 /// writes the results to docs/benchmark.include.md, which MarkdownSnippets pulls into the readme.
@@ -96,12 +90,15 @@ public class BenchmarkTests
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
-            WorkingDirectory = work
+            WorkingDirectory = work,
+            Environment =
+            {
+                ["DOTNET_NOLOGO"] = "true",
+                ["DOTNET_CLI_TELEMETRY_OPTOUT"] = "true",
+                ["NUGET_PACKAGES"] = AuthorPack.PackagesDirectory,
+                ["MSBUILDDISABLENODEREUSE"] = "1"
+            }
         };
-        info.Environment["DOTNET_NOLOGO"] = "true";
-        info.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "true";
-        info.Environment["NUGET_PACKAGES"] = AuthorPack.PackagesDirectory;
-        info.Environment["MSBUILDDISABLENODEREUSE"] = "1";
         foreach (var argument in new[]
                  {
                      "pack", Path.Combine(work, project), "--no-build", "--configuration", "Release",

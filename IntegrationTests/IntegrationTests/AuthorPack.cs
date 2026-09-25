@@ -1,8 +1,3 @@
-using System.Text.Json;
-using Json.Schema;
-
-namespace Sbom.IntegrationTests;
-
 public sealed record PackResult(CliResult Cli, string WorkDirectory, string? Nupkg)
 {
     public byte[] Entry(string name)
@@ -35,14 +30,14 @@ public static class AuthorPack
         return path;
     });
 
-    public static async Task<PackResult> Pack(
+    public static Task<PackResult> Pack(
         string fixture,
         string project,
         IReadOnlyDictionary<string, string>? properties = null,
         [CallerMemberName] string caller = "")
     {
         var work = Prepare(fixture, caller);
-        return await Repack(work, project, properties);
+        return Repack(work, project, properties);
     }
 
     public static string PackagesDirectory => packages.Value;

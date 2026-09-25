@@ -14,8 +14,6 @@
     <PackageReference Include="Verify.TUnit" />
     <PackageReference Include="Verify.DiffPlex" />
     <PackageReference Include="DiffEngine" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="..\..\src\Sbom.Tests\Schemas\*.json" Link="Schemas\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

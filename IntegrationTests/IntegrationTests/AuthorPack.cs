@@ -59,13 +59,14 @@ public static class AuthorPack
     }
 
     /// <summary>
-    /// Packs again in an existing work directory, after removing the previous output so NuGet
-    /// writes a fresh package.
+    /// Packs again in an existing work directory. By default the previous output is removed first,
+    /// so NuGet writes a fresh package.
     /// </summary>
     public static async Task<PackResult> Repack(
         string work,
         string project,
-        IReadOnlyDictionary<string, string>? properties = null)
+        IReadOnlyDictionary<string, string>? properties = null,
+        bool clean = true)
     {
         var package = PackageUnderTest.Ensure();
 
@@ -82,7 +83,8 @@ public static class AuthorPack
         }
 
         var output = Path.Combine(work, "out");
-        if (Directory.Exists(output))
+        if (clean &&
+            Directory.Exists(output))
         {
             Directory.Delete(output, true);
         }

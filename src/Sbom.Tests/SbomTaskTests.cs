@@ -32,20 +32,14 @@ public class SbomTaskTests
     sealed class Setup : IDisposable
     {
         public TempDirectory Temp { get; } = new();
-        public string Package { get; }
+        public string Manifest { get; }
+        public string Sidecar => Manifest + ".sha256";
         public string LockFile { get; }
         public string PackageRoot { get; }
 
-        public Setup(bool signed = false, bool withLockFile = true)
+        public Setup(bool withLockFile = true)
         {
-            Package = Temp.Combine("out", "A.1.0.0.nupkg");
-            Directory.CreateDirectory(Temp.Combine("out"));
-            TestPackage.Create(
-                Package,
-                "A",
-                "1.0.0",
-                """<authors>Acme</authors><license type="expression">MIT</license>""",
-                signed);
+            Manifest = Temp.Combine("obj", "Release", "sbom", "manifest.spdx.json");
             LockFile = Temp.Combine("packages.lock.json");
             if (withLockFile)
             {
@@ -57,15 +51,17 @@ public class SbomTaskTests
                 TestPackage.Nuspec("Dep", "2.0.0", """<authors>Dep Author</authors><license type="expression">Apache-2.0</license>"""));
         }
 
-        public (SbomTask Task, StubBuildEngine Engine) Task()
+        public (SbomTask Task, StubBuildEngine Engine) Task(string sourceDateEpoch = "1767225600")
         {
             var engine = new StubBuildEngine();
             var task = new SbomTask
             {
                 BuildEngine = engine,
-                PackOutputs = [new TaskItem(Package)],
+                ManifestFile = Manifest,
                 PackageId = "A",
                 PackageVersion = "1.0.0",
+                Authors = "Acme",
+                PackageLicenseExpression = "MIT",
                 LockFile = LockFile,
                 PackageRoot = PackageRoot + Path.DirectorySeparatorChar,
                 References =
@@ -73,10 +69,12 @@ public class SbomTaskTests
                     new TaskItem("Dep"),
                     new TaskItem("Analyzer", new Dictionary<string, string> { ["PrivateAssets"] = "All" })
                 ],
-                SourceDateEpoch = "1767225600"
+                SourceDateEpoch = sourceDateEpoch
             };
             return (task, engine);
         }
+
+        public string Json => File.ReadAllText(Manifest);
 
         public void Dispose() => Temp.Dispose();
     }
@@ -90,15 +88,19 @@ public class SbomTaskTests
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings).IsEmpty();
 
-        await using var archive = await ZipFile.OpenReadAsync(setup.Package);
-        var manifest = Read(archive, NupkgReader.ManifestPath);
-        var sidecar = Encoding.ASCII.GetString(Read(archive, NupkgReader.ManifestHashPath));
-        await Assert.That(sidecar).IsEqualTo(Hashing.Sha256Hex(manifest));
+        await Assert.That(task.PackageFiles.Select(_ => _.ItemSpec)).IsEquivalentTo([setup.Manifest, setup.Sidecar]);
+        await Assert.That(task.PackageFiles.All(_ => _.GetMetadata("PackagePath") == "_manifest/spdx_3.0/")).IsTrue();
+
+        var manifest = await File.ReadAllBytesAsync(setup.Manifest);
+        await Assert.That(await File.ReadAllTextAsync(setup.Sidecar)).IsEqualTo(Hashing.Sha256Hex(manifest));
         await Assert.That(SpdxBuilderTests.SchemaErrors(manifest)).IsEmpty();
 
-        var json = Encoding.UTF8.GetString(manifest);
+        var json = setup.Json;
         await Assert.That(json).DoesNotContain(setup.Temp.Path.Replace("\\", "\\\\"));
+        await Assert.That(json).DoesNotContain("software_File");
+        await Assert.That(json).Contains("\"name\": \"Acme\"");
         await Assert.That(json).Contains("\"name\": \"Dep Author\"");
+        await Assert.That(json).Contains("\"simplelicensing_licenseExpression\": \"MIT\"");
         await Assert.That(json).Contains("\"simplelicensing_licenseExpression\": \"Apache-2.0\"");
         await Assert.That(json).Contains("\"created\": \"2026-01-01T00:00:00Z\"");
         await Assert.That(Scoped(json, "build")).IsEqualTo(1);
@@ -106,16 +108,62 @@ public class SbomTaskTests
     }
 
     [Test]
-    public async Task SecondRunLeavesThePackageAlone()
+    public async Task RootComesFromPackProperties()
+    {
+        using var setup = new Setup();
+        var (task, _) = setup.Task();
+        task.PackageVersion = "1.0+sha.5";
+        task.PackageLicenseExpression = "";
+        task.PackageLicenseUrl = "https://licenses.nuget.org/Apache-2.0%20OR%20MIT";
+        task.PackageType = "DotnetTool";
+        task.PackageProjectUrl = "https://example.com/a";
+        task.RepositoryUrl = "https://github.com/acme/a";
+        task.RepositoryCommit = "abc";
+
+        await Assert.That(task.Execute()).IsTrue();
+        var json = setup.Json;
+        // Normalized as NuGet writes it into the nuspec; build metadata stays out of the purl.
+        await Assert.That(json).Contains("\"software_packageVersion\": \"1.0.0+sha.5\"");
+        await Assert.That(json).Contains("\"software_packageUrl\": \"pkg:nuget/A@1.0.0\"");
+        await Assert.That(json).Contains("\"software_primaryPurpose\": \"application\"");
+        await Assert.That(json).Contains("\"simplelicensing_licenseExpression\": \"Apache-2.0 OR MIT\"");
+        await Assert.That(json).Contains("\"software_homePage\": \"https://example.com/a\"");
+        await Assert.That(json).Contains("\"software_sourceInfo\": \"Built from https://github.com/acme/a at commit abc\"");
+    }
+
+    [Test]
+    public async Task UnchangedManifestIsNotRewritten()
+    {
+        using var setup = new Setup();
+        // Left to the clock, so only reusing the previous timestamp keeps the bytes equal.
+        await Assert.That(setup.Task(sourceDateEpoch: "").Task.Execute()).IsTrue();
+        var bytes = await File.ReadAllBytesAsync(setup.Manifest);
+        var old = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(setup.Manifest, old);
+        File.SetLastWriteTimeUtc(setup.Sidecar, old);
+
+        await Task.Delay(1100);
+        var (task, engine) = setup.Task(sourceDateEpoch: "");
+        await Assert.That(task.Execute()).IsTrue();
+
+        await Assert.That((await File.ReadAllBytesAsync(setup.Manifest)).SequenceEqual(bytes)).IsTrue();
+        await Assert.That(File.GetLastWriteTimeUtc(setup.Manifest)).IsEqualTo(old);
+        await Assert.That(File.GetLastWriteTimeUtc(setup.Sidecar)).IsEqualTo(old);
+        await Assert.That(task.PackageFiles.Length).IsEqualTo(2);
+        await Assert.That(engine.Messages.Any(_ => _.Message!.Contains("unchanged"))).IsTrue();
+    }
+
+    [Test]
+    public async Task ChangedInputsRewriteTheManifest()
     {
         using var setup = new Setup();
         await Assert.That(setup.Task().Task.Execute()).IsTrue();
-        var first = await File.ReadAllBytesAsync(setup.Package);
+        var (task, _) = setup.Task();
+        task.Authors = "Someone Else";
 
-        var (task, engine) = setup.Task();
         await Assert.That(task.Execute()).IsTrue();
-        await Assert.That((await File.ReadAllBytesAsync(setup.Package)).SequenceEqual(first)).IsTrue();
-        await Assert.That(engine.Messages.Any(_ => _.Code == Diagnostics.AlreadyPresent)).IsTrue();
+        await Assert.That(setup.Json).Contains("\"name\": \"Someone Else\"");
+        await Assert.That(await File.ReadAllTextAsync(setup.Sidecar)).IsEqualTo(Hashing.Sha256Hex(await File.ReadAllBytesAsync(setup.Manifest)));
     }
 
     [Test]
@@ -128,9 +176,9 @@ public class SbomTaskTests
         task.PackageRoot = one.PackageRoot;
         task.Execute();
 
-        await using var a = await ZipFile.OpenReadAsync(one.Package);
-        await using var b = await ZipFile.OpenReadAsync(two.Package);
-        await Assert.That(Read(a, NupkgReader.ManifestPath).SequenceEqual(Read(b, NupkgReader.ManifestPath))).IsTrue();
+        var first = await File.ReadAllBytesAsync(one.Manifest);
+        var second = await File.ReadAllBytesAsync(two.Manifest);
+        await Assert.That(first.SequenceEqual(second)).IsTrue();
     }
 
     [Test]
@@ -141,6 +189,7 @@ public class SbomTaskTests
 
         await Assert.That(task.Execute()).IsFalse();
         await Assert.That(engine.Errors.Single().Code).IsEqualTo(Diagnostics.LockFileMissing);
+        await Assert.That(task.PackageFiles).IsEmpty();
     }
 
     [Test]
@@ -192,11 +241,9 @@ public class SbomTaskTests
 
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings).IsEmpty();
-        using var archive = ZipFile.OpenRead(setup.Package);
-        var manifest = Read(archive, NupkgReader.ManifestPath);
-        await Assert.That(SpdxBuilderTests.SchemaErrors(manifest)).IsEmpty();
+        await Assert.That(SpdxBuilderTests.SchemaErrors(await File.ReadAllBytesAsync(setup.Manifest))).IsEmpty();
 
-        var json = Encoding.UTF8.GetString(manifest);
+        var json = setup.Json;
         await Assert.That(json).Contains("pkg:nuget/Inner@1.0.0");
         await Assert.That(json).Contains("\"hashValue\": \"000102\"");
         await Assert.That(json).DoesNotContain("runtime.win-x64.Native");
@@ -238,25 +285,16 @@ public class SbomTaskTests
     }
 
     [Test]
-    public async Task SignedPackageWarns()
-    {
-        using var setup = new Setup(signed: true);
-        var (task, engine) = setup.Task();
-
-        await Assert.That(task.Execute()).IsTrue();
-        await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.PackageSigned);
-    }
-
-    [Test]
-    public async Task MissingPackageWarns()
+    public async Task NuspecFileWarnsAndWritesNothing()
     {
         using var setup = new Setup();
         var (task, engine) = setup.Task();
-        task.PackOutputs = [];
-        task.PackageOutputPath = setup.Temp.Combine("elsewhere");
+        task.NuspecFile = setup.Temp.Combine("A.nuspec");
 
         await Assert.That(task.Execute()).IsTrue();
-        await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.PackageNotFound);
+        await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.NuspecFileNotSupported);
+        await Assert.That(task.PackageFiles).IsEmpty();
+        await Assert.That(File.Exists(setup.Manifest)).IsFalse();
     }
 
     [Test]
@@ -291,8 +329,7 @@ public class SbomTaskTests
 
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.LockFileStale);
-        await using var archive = await ZipFile.OpenReadAsync(setup.Package);
-        await Assert.That(archive.GetEntry(NupkgReader.ManifestPath)).IsNotNull();
+        await Assert.That(File.Exists(setup.Manifest)).IsTrue();
     }
 
     [Test]
@@ -310,37 +347,11 @@ public class SbomTaskTests
     }
 
     [Test]
-    public async Task Zip64PackageIsAWarningNotAFailure()
+    public async Task UnexpectedFailureFailsTheBuild()
     {
         using var setup = new Setup();
-        // More than 65535 entries forces .NET to write ZIP64 end records, which the appender refuses.
-        await using (var stream = File.Create(setup.Package))
-        await using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
-        {
-            await using (var writer = new StreamWriter(await archive.CreateEntry("A.nuspec").OpenAsync()))
-            {
-                await writer.WriteAsync(TestPackage.Nuspec("A", "1.0.0"));
-            }
-
-            for (var i = 0; i < ushort.MaxValue + 1; i++)
-            {
-                archive.CreateEntry($"content/{i}.txt", CompressionLevel.NoCompression);
-            }
-        }
-
-        var before = await File.ReadAllBytesAsync(setup.Package);
-        var (task, engine) = setup.Task();
-
-        await Assert.That(task.Execute()).IsTrue();
-        await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.UnsupportedLayout);
-        await Assert.That((await File.ReadAllBytesAsync(setup.Package)).SequenceEqual(before)).IsTrue();
-    }
-
-    [Test]
-    public async Task CorruptPackageFailsTheBuild()
-    {
-        using var setup = new Setup();
-        await File.WriteAllTextAsync(setup.Package, "not a zip");
+        // A file where the manifest's directory should be.
+        setup.Temp.Write("obj/Release/sbom", "");
         var (task, engine) = setup.Task();
 
         await Assert.That(task.Execute()).IsFalse();
@@ -361,19 +372,27 @@ public class SbomTaskTests
     public async Task TargetsPassOnlyRealParameters()
     {
         var targets = System.Xml.Linq.XDocument.Load(Path.Combine(RepoRoot(), "src", "Sbom", "build", "Sbom.targets"));
-        var attributes = targets.Descendants()
-            .Single(_ => _.Name.LocalName == "SbomTask")
+        var element = targets.Descendants().Single(_ => _.Name.LocalName == "SbomTask");
+        var attributes = element
             .Attributes()
             .Select(_ => _.Name.LocalName)
             .Where(_ => _ != "Condition")
             .ToHashSet();
+        var outputs = element
+            .Elements()
+            .Where(_ => _.Name.LocalName == "Output")
+            .Select(_ => _.Attribute("TaskParameter")!.Value)
+            .ToHashSet();
         var properties = typeof(SbomTask)
             .GetProperties()
             .Where(_ => _.DeclaringType == typeof(SbomTask))
-            .Select(_ => _.Name)
-            .ToHashSet();
-        await Assert.That(attributes.SetEquals(properties)).IsTrue();
+            .ToList();
+        await Assert.That(attributes.SetEquals(properties.Where(_ => !IsOutput(_)).Select(_ => _.Name))).IsTrue();
+        await Assert.That(outputs.SetEquals(properties.Where(IsOutput).Select(_ => _.Name))).IsTrue();
     }
+
+    static bool IsOutput(System.Reflection.PropertyInfo property) =>
+        property.IsDefined(typeof(OutputAttribute), false);
 
     static int Scoped(string json, string scope) =>
         json.Split('\n').Count(_ => _.Trim() == $"\"scope\": \"{scope}\",");
@@ -387,16 +406,5 @@ public class SbomTaskTests
         }
 
         return directory.FullName;
-    }
-
-    static byte[] Read(ZipArchive archive, string name)
-    {
-        using var buffer = new MemoryStream();
-        using (var stream = archive.GetEntry(name)!.Open())
-        {
-            stream.CopyTo(buffer);
-        }
-
-        return buffer.ToArray();
     }
 }

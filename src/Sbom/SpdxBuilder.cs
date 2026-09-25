@@ -113,7 +113,7 @@ public static class SpdxBuilder
 
             local = Local("license", expression);
             licenses[expression] = local;
-            Add(8, expression, local, "simplelicensing_LicenseExpression",
+            Add(7, expression, local, "simplelicensing_LicenseExpression",
                 new JsonObject().Set("simplelicensing_licenseExpression", expression));
             return local;
         }
@@ -192,25 +192,6 @@ public static class SpdxBuilder
                 AddLicense(builder, relationships, local, dependency.Metadata?.LicenseExpression);
             }
         }
-
-        // Files.
-        var fileLocals = new List<string>();
-        foreach (var file in input.Files)
-        {
-            var local = builder.Local("file", file.Name);
-            fileLocals.Add(local);
-            builder.Add(7, file.Name, local, "software_File", new JsonObject()
-                .Set("name", file.Name)
-                .Set("verifiedUsing", new List<object>
-                {
-                    new JsonObject()
-                        .Set("type", "Hash")
-                        .Set("algorithm", "sha256")
-                        .Set("hashValue", file.Sha256)
-                }));
-        }
-
-        relationships.Add(new(rootLocal, "contains", null, fileLocals));
 
         var build = new List<string>();
         var runtime = new List<string>();

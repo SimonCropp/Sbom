@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <NuspecFile>Author.NuspecFile.nuspec</NuspecFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Sbom" Version="$(SbomVersion)" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

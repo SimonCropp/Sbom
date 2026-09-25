@@ -5,39 +5,33 @@
       @id: _:creationinfo,
       created: DateTimeOffset_1,
       createdBy: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-37036cd8f9746d33
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-37036cd8f9746d33
       ],
       createdUsing: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#tool
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#tool
       ],
       specVersion: 3.0.1,
       type: CreationInfo
     },
     {
       creationInfo: _:creationinfo,
-      dataLicense: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-6e237c55b0583cb7,
+      dataLicense: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-6e237c55b0583cb7,
       element: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#sbom,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#tool,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-37036cd8f9746d33,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-ce734dbdccc52b15,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-f40ea94f2fb05d92,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-76db6678a27be3ae,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-0ae4c76dc95b8f58,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-1641258ce43aac18,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-9a9c6af92c146f49,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-0170dfec21db15e3,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-6a7c736f53939e8a,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-bcb8d0cf768049ae,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-6e237c55b0583cb7,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-e5dcffe836b6ec8a,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-20e84fb5af0a0227,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-232b1fc21aa1e2fb,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-9e42ec98ab1cd146,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-f7a07c9a9f840946,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-c74fbb1f6aaf7875,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-63da1d4c29a98bff
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#sbom,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#tool,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-37036cd8f9746d33,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-ce734dbdccc52b15,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-f40ea94f2fb05d92,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-d8c9bdf57870b1c7,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-76db6678a27be3ae,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-0ae4c76dc95b8f58,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-6e237c55b0583cb7,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-e5dcffe836b6ec8a,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-232b1fc21aa1e2fb,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-9e42ec98ab1cd146,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-f7a07c9a9f840946,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-c74fbb1f6aaf7875,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-63da1d4c29a98bff
       ],
       name: Acme.Widgets 1.2.3,
       profileConformance: [
@@ -46,34 +40,28 @@
         software
       ],
       rootElement: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#sbom
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#sbom
       ],
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#document,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#document,
       type: SpdxDocument
     },
     {
       creationInfo: _:creationinfo,
       element: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#tool,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-37036cd8f9746d33,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-ce734dbdccc52b15,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-f40ea94f2fb05d92,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-76db6678a27be3ae,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-0ae4c76dc95b8f58,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-1641258ce43aac18,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-9a9c6af92c146f49,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-0170dfec21db15e3,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-6a7c736f53939e8a,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-bcb8d0cf768049ae,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-6e237c55b0583cb7,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-e5dcffe836b6ec8a,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-20e84fb5af0a0227,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-232b1fc21aa1e2fb,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-9e42ec98ab1cd146,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-f7a07c9a9f840946,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-c74fbb1f6aaf7875,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-63da1d4c29a98bff
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#tool,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-37036cd8f9746d33,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-ce734dbdccc52b15,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-f40ea94f2fb05d92,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-d8c9bdf57870b1c7,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-76db6678a27be3ae,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-0ae4c76dc95b8f58,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-6e237c55b0583cb7,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-e5dcffe836b6ec8a,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-232b1fc21aa1e2fb,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-9e42ec98ab1cd146,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-f7a07c9a9f840946,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-c74fbb1f6aaf7875,
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-63da1d4c29a98bff
       ],
       name: Acme.Widgets 1.2.3,
       profileConformance: [
@@ -82,12 +70,12 @@
         software
       ],
       rootElement: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-d8c9bdf57870b1c7
       ],
       software_sbomType: [
         build
       ],
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#sbom,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#sbom,
       type: software_Sbom
     },
     {
@@ -100,25 +88,25 @@
         }
       ],
       name: Sbom 1.0.0,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#tool,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#tool,
       type: Tool
     },
     {
       creationInfo: _:creationinfo,
       name: Acme,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-37036cd8f9746d33,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-37036cd8f9746d33,
       type: Agent
     },
     {
       creationInfo: _:creationinfo,
       name: James Newton-King,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-ce734dbdccc52b15,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-ce734dbdccc52b15,
       type: Agent
     },
     {
       creationInfo: _:creationinfo,
       name: Simon Cropp,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-f40ea94f2fb05d92,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-f40ea94f2fb05d92,
       type: Agent
     },
     {
@@ -146,8 +134,8 @@
       software_packageVersion: 1.2.3,
       software_primaryPurpose: library,
       software_sourceInfo: Built from https://github.com/acme/widgets at commit 0123456789abcdef0123456789abcdef01234567,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7,
-      suppliedBy: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-37036cd8f9746d33,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-d8c9bdf57870b1c7,
+      suppliedBy: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-37036cd8f9746d33,
       type: software_Package
     },
     {
@@ -174,8 +162,8 @@
       software_packageUrl: pkg:nuget/Newtonsoft.Json@13.0.3,
       software_packageVersion: 13.0.3,
       software_sourceInfo: Built from https://github.com/JamesNK/Newtonsoft.Json at commit 0a2e291c0d9c0c7675d445703e51750363a549ef,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-76db6678a27be3ae,
-      suppliedBy: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-ce734dbdccc52b15,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-76db6678a27be3ae,
+      suppliedBy: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-ce734dbdccc52b15,
       type: software_Package,
       verifiedUsing: [
         {
@@ -199,8 +187,8 @@
       software_homePage: https://github.com/SimonCropp/Polyfill,
       software_packageUrl: pkg:nuget/Polyfill@9.0.0,
       software_packageVersion: 9.0.0,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-0ae4c76dc95b8f58,
-      suppliedBy: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#agent-f40ea94f2fb05d92,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-0ae4c76dc95b8f58,
+      suppliedBy: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#agent-f40ea94f2fb05d92,
       type: software_Package,
       verifiedUsing: [
         {
@@ -213,144 +201,65 @@
     },
     {
       creationInfo: _:creationinfo,
-      name: Acme.Widgets.nuspec,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-1641258ce43aac18,
-      type: software_File,
-      verifiedUsing: [
-        {
-          algorithm: sha256,
-          hashValue: 3333333333333333333333333333333333333333333333333333333333333333,
-          type: Hash
-        }
-      ]
-    },
-    {
-      creationInfo: _:creationinfo,
-      name: [Content_Types].xml,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-9a9c6af92c146f49,
-      type: software_File,
-      verifiedUsing: [
-        {
-          algorithm: sha256,
-          hashValue: 1111111111111111111111111111111111111111111111111111111111111111,
-          type: Hash
-        }
-      ]
-    },
-    {
-      creationInfo: _:creationinfo,
-      name: _rels/.rels,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-0170dfec21db15e3,
-      type: software_File,
-      verifiedUsing: [
-        {
-          algorithm: sha256,
-          hashValue: 2222222222222222222222222222222222222222222222222222222222222222,
-          type: Hash
-        }
-      ]
-    },
-    {
-      creationInfo: _:creationinfo,
-      name: lib/net8.0/Acme.Widgets.dll,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-6a7c736f53939e8a,
-      type: software_File,
-      verifiedUsing: [
-        {
-          algorithm: sha256,
-          hashValue: 4444444444444444444444444444444444444444444444444444444444444444,
-          type: Hash
-        }
-      ]
-    },
-    {
-      creationInfo: _:creationinfo,
-      name: package/services/metadata/core-properties/0123456789abcdef0123456789abcdef.psmdcp,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-bcb8d0cf768049ae,
-      type: software_File,
-      verifiedUsing: [
-        {
-          algorithm: sha256,
-          hashValue: 5555555555555555555555555555555555555555555555555555555555555555,
-          type: Hash
-        }
-      ]
-    },
-    {
-      creationInfo: _:creationinfo,
       simplelicensing_licenseExpression: CC0-1.0,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-6e237c55b0583cb7,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-6e237c55b0583cb7,
       type: simplelicensing_LicenseExpression
     },
     {
       creationInfo: _:creationinfo,
       simplelicensing_licenseExpression: MIT,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-e5dcffe836b6ec8a,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-e5dcffe836b6ec8a,
       type: simplelicensing_LicenseExpression
     },
     {
       creationInfo: _:creationinfo,
-      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7,
-      relationshipType: contains,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-20e84fb5af0a0227,
-      to: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-1641258ce43aac18,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-9a9c6af92c146f49,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-0170dfec21db15e3,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-6a7c736f53939e8a,
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#file-bcb8d0cf768049ae
-      ],
-      type: Relationship
-    },
-    {
-      creationInfo: _:creationinfo,
-      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7,
+      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-d8c9bdf57870b1c7,
       relationshipType: dependsOn,
       scope: build,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-232b1fc21aa1e2fb,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-232b1fc21aa1e2fb,
       to: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-0ae4c76dc95b8f58
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-0ae4c76dc95b8f58
       ],
       type: LifecycleScopedRelationship
     },
     {
       creationInfo: _:creationinfo,
-      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7,
+      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-d8c9bdf57870b1c7,
       relationshipType: dependsOn,
       scope: runtime,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-9e42ec98ab1cd146,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-9e42ec98ab1cd146,
       to: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-76db6678a27be3ae
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-76db6678a27be3ae
       ],
       type: LifecycleScopedRelationship
     },
     {
       creationInfo: _:creationinfo,
-      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-d8c9bdf57870b1c7,
+      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-d8c9bdf57870b1c7,
       relationshipType: hasDeclaredLicense,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-f7a07c9a9f840946,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-f7a07c9a9f840946,
       to: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-e5dcffe836b6ec8a
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-e5dcffe836b6ec8a
       ],
       type: Relationship
     },
     {
       creationInfo: _:creationinfo,
-      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-76db6678a27be3ae,
+      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-76db6678a27be3ae,
       relationshipType: hasDeclaredLicense,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-c74fbb1f6aaf7875,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-c74fbb1f6aaf7875,
       to: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-e5dcffe836b6ec8a
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-e5dcffe836b6ec8a
       ],
       type: Relationship
     },
     {
       creationInfo: _:creationinfo,
-      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#package-0ae4c76dc95b8f58,
+      from: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#package-0ae4c76dc95b8f58,
       relationshipType: hasDeclaredLicense,
-      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#relationship-63da1d4c29a98bff,
+      spdxId: https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#relationship-63da1d4c29a98bff,
       to: [
-        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#license-e5dcffe836b6ec8a
+        https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#license-e5dcffe836b6ec8a
       ],
       type: Relationship
     }

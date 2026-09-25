@@ -25,11 +25,11 @@ Packing a net10.0 library with 30 direct `PackageReference`s (179 packages once 
 
 | | SBOM step | Whole pack | Peak memory of the pack process |
 |---|--:|--:|--:|
-| No SBOM | – | 745 ms | 113 MB |
-| Microsoft.Sbom.Targets 4.1.13 | 1,630 ms | 2,373 ms | 200 MB |
-| Sbom | 48 ms | 780 ms | 117 MB |
+| No SBOM | – | 790 ms | 109 MB |
+| Microsoft.Sbom.Targets 4.1.13 | 1,879 ms | 2,787 ms | 200 MB |
+| Sbom | 43 ms | 827 ms | 117 MB |
 
-Sbom's is 34x faster, and it adds 5 MB of peak memory to the pack where Microsoft.Sbom.Targets adds 87 MB.
+Sbom's SBOM step is 44x faster, and it adds 8 MB of peak memory to the pack where Microsoft.Sbom.Targets adds 91 MB.
 
 Measured with SDK 10.0.401 on Microsoft Windows 10.0.28000, 16 logical cores, by `BenchmarkTests` in the integration tests.<!-- endInclude -->
 
@@ -53,8 +53,9 @@ dotnet run --project IntegrationTests/IntegrationTests -c Release --no-build -- 
    output does not: it uses upper-case relationship types, relative ids and abstract element types.
  * Deterministic. Element ids and the document namespace are content hashes, and with
    `SOURCE_DATE_EPOCH` (or NuGet's `DeterministicTimestamp`) the same inputs produce the same bytes.
- * The package is not rewritten. The two manifest entries are appended, so every existing byte of
-   the nupkg stays as NuGet wrote it.
+ * The package is written once, by NuGet. The manifest is handed to pack as one more package file,
+   so nothing unzips, rewrites or re-zips the nupkg afterwards, and an unchanged SBOM leaves an
+   up-to-date package alone.
  * Dependencies are marked as `runtime` or `build` (`PrivateAssets="all"`), including source-only
    packages compiled into the assembly.
  * Fast enough that `Condition="'$(CI)' == 'true'"` is no longer needed.
@@ -68,7 +69,7 @@ Reference the package:
 <PackageReference Include="Sbom" Version="x.y.z" PrivateAssets="all" />
 ```
 
-`dotnet pack`, or a build with `GeneratePackageOnBuild`, then adds:
+`dotnet pack`, or a build with `GeneratePackageOnBuild`, then packs:
 
  * `_manifest/spdx_3.0/manifest.spdx.json`
  * `_manifest/spdx_3.0/manifest.spdx.json.sha256`: lowercase hex SHA-256 of the manifest, the same
@@ -90,8 +91,7 @@ CI guarantees it matches what was built:
 The document describes:
 
  * The package itself: id, version, supplier (from `Authors`), license, project URL, copyright,
-   repository URL and commit, all read from the nuspec packed into the nupkg.
- * Every file in the nupkg, with its SHA-256.
+   repository URL and commit, from the same pack properties NuGet writes into the nuspec.
  * Every resolved NuGet dependency, direct and transitive, across all
    target frameworks: purl (`pkg:nuget/Id@Version`), the NuGet content hash (SHA-512), supplier and
    declared license from its nuspec, and the dependency edges between packages.
@@ -112,21 +112,46 @@ not listed.
 | `NuGetLockFilePath` | `packages.lock.json` | NuGet's own setting; honoured. |
 
 
-## Migrating from Microsoft.Sbom.Targets
+## Differences from Microsoft.Sbom.Targets
+
+ * **Format.** SPDX 3.0.1 JSON-LD in `_manifest/spdx_3.0/`, where Microsoft.Sbom.Targets writes
+   SPDX 2.2 to `_manifest/spdx_2.2/`.
+ * **No per-file entries.** Microsoft.Sbom.Targets lists every file in the nupkg with its hashes.
+   Sbom describes the package and its dependency graph, and lists no files:
+   * Neither SPDX 3.0.1, nor the [NTIA minimum elements](https://www.ntia.gov/report/2021/minimum-elements-software-bill-materials-sbom),
+     nor CISA's update to them asks for file entries. The hashes they ask for are per component,
+     and every dependency carries NuGet's SHA-512 content hash.
+   * File hashes stored inside the package they describe prove nothing about it: whoever can change
+     a file can change the manifest too. The package signature and NuGet's content hash already
+     cover every byte, manifest included.
+   * Listing files would mean hashing the finished package, which is what forces
+     Microsoft.Sbom.Targets to unzip and re-zip it after pack. Without them, the SBOM is complete
+     before NuGet writes the package.
+ * **Only NuGet dependencies.** The graph is NuGet's own restore graph. Component Detection also
+   reports npm, pip, Maven and other ecosystems it finds anywhere under the project directory,
+   whether or not they ship in the package.
+ * **Build and runtime scopes.** Direct dependencies are split by `PrivateAssets="all"`, so
+   analyzers and source-only packages are distinguishable from what a consumer receives.
+ * **`NuspecFile` packs are not supported** ([Sbom010](/docs/DiagnosticCodes.md#sbom010)). NuGet then
+   packs only the files the nuspec lists.
+
+
+### Migrating
 
  * Replace the `Microsoft.Sbom.Targets` reference with `Sbom`.
- * The manifest moves from `_manifest/spdx_2.2/` to `_manifest/spdx_3.0/`.
  * `SbomGenerationPackageSupplier` becomes `SbomSupplier`, and `SbomGenerationNamespaceBaseUri`
-   becomes `SbomNamespaceBaseUri`. Package name and version come from the packed nuspec. The other
+   becomes `SbomNamespaceBaseUri`. Package name and version come from the pack properties. The other
    `SbomGeneration*` properties have no equivalent.
- * While both are referenced, both SBOMs are written and warning [Sbom006](/docs/DiagnosticCodes.md#sbom006)
-   is raised.
+ * Drop any `Condition="'$(CI)' == 'true'"` on the reference.
+ * While both are referenced, Microsoft.Sbom.Targets replaces the `_manifest` folder when it re-zips
+   the package, so only its SBOM survives, and warning
+   [Sbom006](/docs/DiagnosticCodes.md#sbom006) is raised.
 
 
 ## Signing
 
-Adding entries to a signed package would invalidate its signature, so a signed package is left
-alone ([Sbom003](/docs/DiagnosticCodes.md#sbom003)). Sign after pack.
+The manifest is packed with every other file, so signing the package afterwards covers it like any
+other entry.
 
 
 ## Diagnostics
@@ -134,11 +159,11 @@ alone ([Sbom003](/docs/DiagnosticCodes.md#sbom003)). Sign after pack.
 | Code | Meaning | Level |
 |---|---|---|
 | [Sbom001](/docs/DiagnosticCodes.md#sbom001) | Dependency graph unavailable | Error |
-| [Sbom002](/docs/DiagnosticCodes.md#sbom002) | Package not found | Warning |
-| [Sbom003](/docs/DiagnosticCodes.md#sbom003) | Package is signed | Warning |
 | [Sbom004](/docs/DiagnosticCodes.md#sbom004) | Dependency metadata unavailable | Message |
 | [Sbom005](/docs/DiagnosticCodes.md#sbom005) | NuGet lock file may be stale | Warning |
 | [Sbom006](/docs/DiagnosticCodes.md#sbom006) | Microsoft.Sbom.Targets also generates an SBOM | Warning |
-| [Sbom007](/docs/DiagnosticCodes.md#sbom007) | Package layout not supported | Warning |
 | [Sbom008](/docs/DiagnosticCodes.md#sbom008) | SBOM generation failed | Error |
-| [Sbom009](/docs/DiagnosticCodes.md#sbom009) | SBOM already present | Message |
+| [Sbom010](/docs/DiagnosticCodes.md#sbom010) | NuspecFile packs not supported | Warning |
+
+Sbom002, Sbom003, Sbom007 and Sbom009 were retired in 0.3.0; see
+[retired codes](/docs/DiagnosticCodes.md#retired-codes).

@@ -22,7 +22,6 @@ public sealed class SbomInput
 {
     public required NuspecMetadata Root { get; init; }
     public string? Supplier { get; init; }
-    public required IReadOnlyList<PackageFile> Files { get; init; }
     public required IReadOnlyList<SbomDependency> Dependencies { get; init; }
     public required DateTimeOffset Created { get; init; }
     public string? NamespaceBaseUri { get; init; }

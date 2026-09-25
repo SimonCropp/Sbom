@@ -113,10 +113,12 @@ public class ReaderTests
     [Test]
     public async Task NormalizeVersion()
     {
-        await Assert.That(PackageLocator.NormalizeVersion("1.0")).IsEqualTo("1.0.0");
-        await Assert.That(PackageLocator.NormalizeVersion("1.2.3.0")).IsEqualTo("1.2.3");
-        await Assert.That(PackageLocator.NormalizeVersion("1.2.3.4")).IsEqualTo("1.2.3.4");
-        await Assert.That(PackageLocator.NormalizeVersion("01.2-beta+sha")).IsEqualTo("1.2.0-beta");
+        await Assert.That(Versions.Normalize("1.0")).IsEqualTo("1.0.0");
+        await Assert.That(Versions.Normalize("1.2.3.0")).IsEqualTo("1.2.3");
+        await Assert.That(Versions.Normalize("1.2.3.4")).IsEqualTo("1.2.3.4");
+        await Assert.That(Versions.Normalize("01.2-beta+sha")).IsEqualTo("1.2.0-beta+sha");
+        await Assert.That(Versions.Normalize("1.2.3.4.5")).IsEqualTo("1.2.3.4.5");
+        await Assert.That(Versions.Normalize("$version$")).IsEqualTo("$version$");
     }
 
     [Test]
@@ -127,5 +129,9 @@ public class ReaderTests
         await Assert.That(Sbom.Timestamps.Format(Sbom.Timestamps.Resolve("true", "1767225600", Now))).IsEqualTo("2026-01-01T00:00:00Z");
         await Assert.That(Sbom.Timestamps.Format(Sbom.Timestamps.Resolve("2026-02-03T04:05:06+10:00", null, Now))).IsEqualTo("2026-02-02T18:05:06Z");
         await Assert.That(Sbom.Timestamps.Format(Sbom.Timestamps.Resolve("", null, Now))).IsEqualTo("2030-01-01T00:00:00Z");
+        await Assert.That(Sbom.Timestamps.Explicit("false", "")).IsNull();
+        await Assert.That(Sbom.Timestamps.ReadCreated("{\n  \"created\": \"2026-01-01T00:00:00Z\",\n}")).IsEqualTo(DateTimeOffset.FromUnixTimeSeconds(1767225600));
+        await Assert.That(Sbom.Timestamps.ReadCreated("{\"created\": \"yesterday\"}")).IsNull();
+        await Assert.That(Sbom.Timestamps.ReadCreated("{}")).IsNull();
     }
 }

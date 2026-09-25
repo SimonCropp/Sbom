@@ -20,22 +20,55 @@ public class AuthorPackTests
         await Assert.That(Scoped(graph, "build")).Contains("pkg:nuget/JetBrains.Annotations@2026.2.0");
         await Assert.That(Scoped(graph, "build")).Contains($"pkg:nuget/Sbom@{PackageUnderTest.Ensure().Version}");
 
-        // Every entry outside _manifest is listed with its real hash.
-        var files = graph
-            .Where(_ => _.GetProperty("type").GetString() == "software_File")
-            .ToDictionary(
-                _ => _.GetProperty("name").GetString()!,
-                _ => _.GetProperty("verifiedUsing")[0].GetProperty("hashValue").GetString());
+        // Root identity and metadata come from the pack properties, and match the packed nuspec.
+        var root = graph.Single(_ => _.TryGetProperty("software_primaryPurpose", out _));
+        await Assert.That(root.GetProperty("software_packageUrl").GetString()).IsEqualTo("pkg:nuget/Author.Basic@1.0.0");
+        await Assert.That(json).Contains("\"name\": \"Acme\"");
+        await Assert.That(graph.Any(_ => _.GetProperty("type").GetString() == "software_File")).IsFalse();
+    }
+
+    [Test]
+    public async Task IncrementalPackLeavesThePackageAlone()
+    {
+        var first = await AuthorPack.Pack("Author.Basic", "Author.Basic.csproj");
+        await Assert.That(first.Cli.ExitCode).IsEqualTo(0).Because(first.Cli.Combined);
+        var written = File.GetLastWriteTimeUtc(first.Nupkg!);
+        var bytes = await File.ReadAllBytesAsync(first.Nupkg!);
+
+        var second = await AuthorPack.Repack(first.WorkDirectory, "Author.Basic.csproj", clean: false);
+        await Assert.That(second.Cli.ExitCode).IsEqualTo(0).Because(second.Cli.Combined);
+        // No SOURCE_DATE_EPOCH: the manifest keeps its timestamp because nothing else changed, so
+        // GenerateNuspec stays up to date and the package is not written again.
+        await Assert.That(File.GetLastWriteTimeUtc(second.Nupkg!)).IsEqualTo(written);
+        await Assert.That((await File.ReadAllBytesAsync(second.Nupkg!)).SequenceEqual(bytes)).IsTrue();
+    }
+
+    [Test]
+    public async Task NuspecFileWarns()
+    {
+        var result = await AuthorPack.Pack("Author.NuspecFile", "Author.NuspecFile.csproj");
+        await Assert.That(result.Cli.ExitCode).IsEqualTo(0).Because(result.Cli.Combined);
+        await Assert.That(result.Cli.Combined).Contains("Sbom010");
         await using var archive = await ZipFile.OpenReadAsync(result.Nupkg!);
-        var entries = archive.Entries
-            .Where(_ => !_.FullName.StartsWith("_manifest/", StringComparison.Ordinal))
-            .ToList();
-        await Assert.That(files.Count).IsEqualTo(entries.Count);
-        foreach (var entry in entries)
-        {
-            await using var stream = await entry.OpenAsync();
-            await Assert.That(files[entry.FullName]).IsEqualTo(Convert.ToHexStringLower(await SHA256.HashDataAsync(stream)));
-        }
+        await Assert.That(archive.Entries.Any(_ => _.FullName.StartsWith("_manifest/", StringComparison.Ordinal))).IsFalse();
+    }
+
+    [Test]
+    public async Task SymbolPackageHasNoSbom()
+    {
+        var result = await AuthorPack.Pack(
+            "Author.Basic",
+            "Author.Basic.csproj",
+            new Dictionary<string, string>
+            {
+                ["IncludeSymbols"] = "true",
+                ["SymbolPackageFormat"] = "snupkg"
+            });
+        await Assert.That(result.Cli.ExitCode).IsEqualTo(0).Because(result.Cli.Combined);
+        await Assert.That(result.Entry("_manifest/spdx_3.0/manifest.spdx.json").Length).IsGreaterThan(0);
+        var symbols = Directory.GetFiles(Path.GetDirectoryName(result.Nupkg!)!, "*.snupkg").Single();
+        await using var archive = await ZipFile.OpenReadAsync(symbols);
+        await Assert.That(archive.Entries.Any(_ => _.FullName.StartsWith("_manifest/", StringComparison.Ordinal))).IsFalse();
     }
 
     [Test]

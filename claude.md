@@ -1,8 +1,10 @@
 # Sbom
 
-An MSBuild task package that appends an SPDX 3.0.1 SBOM to a nupkg after `Pack`. Dependencies come
-from `packages.lock.json`, or `obj/project.assets.json` when there is no lock file; dependency metadata from each package's nuspec in `$(NuGetPackageRoot)`;
-the root package's identity and metadata from the nuspec packed inside the nupkg.
+An MSBuild task package that writes an SPDX 3.0.1 SBOM to `obj/` just before `GenerateNuspec`, and
+hands it to NuGet as one more package file, so NuGet packs it. Dependencies come from
+`packages.lock.json`, or `obj/project.assets.json` when there is no lock file; dependency metadata
+from each package's nuspec in `$(NuGetPackageRoot)`; the root package's identity and metadata from
+the same pack properties NuGet writes into the nuspec.
 
 ## Layout
 
@@ -27,18 +29,27 @@ the root package's identity and metadata from the nuspec packed inside the nupkg
 
 - The task assembly stays `netstandard2.0`. A framework-specific asset selected on
   `$(MSBuildRuntimeType)` only loads on the newest SDK.
-- Never use `ZipArchiveMode.Update`. It rewrites the whole archive on .NET Framework and .NET 8/9,
-  and corrupts data-descriptor entries on .NET 10 (dotnet/runtime#126344). `NupkgWriter` appends
-  raw bytes at the central directory offset.
+- Never open or modify the packed nupkg. The SBOM lists no files, which is what lets it be complete
+  before pack; do not add file entries back.
+- `SbomGenerate` is `BeforeTargets="GenerateNuspec"`, not in `GenerateNuspecDependsOn`: dependencies
+  run before any BeforeTargets, and ProjectDefaults sets `Authors` and the license in its own
+  `BeforeTargets="GenerateNuspec"` target, imported earlier.
+- The per-framework `MSBuild` call must use exactly the global properties the build already used
+  (`TargetFramework` alone when multi-targeted, none when single-targeted). Any other set
+  re-evaluates the project, 100+ ms per framework.
+- The manifest is rewritten only when its content changes, keeping the previous `created` when the
+  timestamp is left to the clock; otherwise every pack would be out of date.
 - Output is a pure function of its inputs: ids and the namespace are content hashes, lists are
   ordinally sorted, newlines are `\n`, and no absolute path is ever written. The golden vector test
-  (`u = 1a8ba6001e9e94bdc573fbefbbeea9a1`) pins the exact bytes.
+  (`u = 8fbdb3b144b7f806d6edf18901df4826`) pins the exact bytes.
 - The output validates against the official SPDX 3.0.1 schema. Do not copy sbom-tool's "3.0"
   variant, which does not.
 - Never touch the network, and never read `.nupkg.metadata` `source` (it would leak private feed
   URLs).
-- Microsoft.Sbom.Targets deletes `_manifest/` when it re-zips, so when both are present it is run
-  first through `CallTarget`.
+- Microsoft.Sbom.Targets replaces `_manifest/` when it re-zips after pack, so with both present only
+  its SBOM survives; Sbom006 says so.
+- Diagnostic codes are never reused. Retired codes stay listed under "Retired codes" in
+  `docs/DiagnosticCodes.md`.
 - Adding or changing a diagnostic code means updating `docs/DiagnosticCodes.md` in the same change;
   a test checks every code has a section.
 - `Sbom.targets` attributes on `SbomTask` must match the task's public properties; a test checks.

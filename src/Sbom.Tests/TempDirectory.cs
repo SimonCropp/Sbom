@@ -41,30 +41,4 @@ static class TestPackage
            </metadata>
          </package>
          """;
-
-    /// <summary>
-    /// A NuGet-shaped package: OPC parts, a root nuspec and one library, all stamped with one time.
-    /// </summary>
-    public static void Create(string path, string id, string version, string nuspecExtra = "", bool signed = false)
-    {
-        using var stream = File.Create(path);
-        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
-        var time = new DateTimeOffset(2026, 3, 4, 5, 6, 8, TimeSpan.Zero);
-        Add(archive, "_rels/.rels", "<Relationships/>", time);
-        Add(archive, $"{id}.nuspec", Nuspec(id, version, nuspecExtra), time);
-        Add(archive, $"lib/net10.0/{id}.dll", "not really a dll", time);
-        Add(archive, "[Content_Types].xml", "<Types/>", time);
-        if (signed)
-        {
-            Add(archive, ".signature.p7s", "signature", time);
-        }
-    }
-
-    static void Add(ZipArchive archive, string name, string content, DateTimeOffset time)
-    {
-        var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
-        entry.LastWriteTime = time;
-        using var writer = new StreamWriter(entry.Open());
-        writer.Write(content);
-    }
 }

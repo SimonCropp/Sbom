@@ -8,13 +8,57 @@ public static class Timestamps
     /// </summary>
     public static DateTimeOffset Resolve(string? deterministicTimestamp, string? sourceDateEpoch, Func<DateTimeOffset> now)
     {
+        var value = Explicit(deterministicTimestamp, sourceDateEpoch);
+        if (value != null)
+        {
+            return value.Value;
+        }
+
+        return Truncate(now());
+    }
+
+    /// <summary>
+    /// The timestamp the build asked for, or null when it is left to the clock.
+    /// </summary>
+    public static DateTimeOffset? Explicit(string? deterministicTimestamp, string? sourceDateEpoch)
+    {
         if (TryParse(deterministicTimestamp, out var value) ||
             TryParse(sourceDateEpoch, out value))
         {
             return value;
         }
 
-        return Truncate(now());
+        return null;
+    }
+
+    const string createdFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+    const string createdProperty = "\"created\": \"";
+
+    /// <summary>
+    /// The created timestamp of a manifest this tool wrote, which has exactly one.
+    /// </summary>
+    public static DateTimeOffset? ReadCreated(string manifest)
+    {
+        var start = manifest.IndexOf(createdProperty, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return null;
+        }
+
+        start += createdProperty.Length;
+        var end = manifest.IndexOf('"', start);
+        if (end < 0 ||
+            !DateTimeOffset.TryParseExact(
+                manifest.Substring(start, end - start),
+                createdFormat,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var value))
+        {
+            return null;
+        }
+
+        return value;
     }
 
     static bool TryParse(string? text, out DateTimeOffset value)
@@ -54,5 +98,5 @@ public static class Timestamps
     }
 
     public static string Format(DateTimeOffset value) =>
-        value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+        value.UtcDateTime.ToString(createdFormat, CultureInfo.InvariantCulture);
 }

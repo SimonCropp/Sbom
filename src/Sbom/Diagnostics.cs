@@ -7,27 +7,23 @@ public static class Diagnostics
 {
     public const string Subcategory = "Sbom";
 
+    // Sbom002, Sbom003, Sbom007 and Sbom009 were retired in 0.3.0, when the SBOM stopped being
+    // appended to the packed nupkg. Codes are never reused.
     public const string LockFileMissing = "Sbom001";
-    public const string PackageNotFound = "Sbom002";
-    public const string PackageSigned = "Sbom003";
     public const string NuspecMissing = "Sbom004";
     public const string LockFileStale = "Sbom005";
     public const string MicrosoftSbomActive = "Sbom006";
-    public const string UnsupportedLayout = "Sbom007";
     public const string Failed = "Sbom008";
-    public const string AlreadyPresent = "Sbom009";
+    public const string NuspecFileNotSupported = "Sbom010";
 
     public static readonly string[] All =
     [
         LockFileMissing,
-        PackageNotFound,
-        PackageSigned,
         NuspecMissing,
         LockFileStale,
         MicrosoftSbomActive,
-        UnsupportedLayout,
         Failed,
-        AlreadyPresent
+        NuspecFileNotSupported
     ];
 
     const string docsBaseUrl = "https://github.com/SimonCropp/Sbom/blob/main/docs/DiagnosticCodes.md";
@@ -36,14 +32,11 @@ public static class Diagnostics
         code switch
         {
             LockFileMissing => "Dependency graph unavailable",
-            PackageNotFound => "Package not found",
-            PackageSigned => "Package is signed",
             NuspecMissing => "Dependency metadata unavailable",
             LockFileStale => "NuGet lock file may be stale",
             MicrosoftSbomActive => "Microsoft.Sbom.Targets also generates an SBOM",
-            UnsupportedLayout => "Package layout not supported",
             Failed => "SBOM generation failed",
-            AlreadyPresent => "SBOM already present",
+            NuspecFileNotSupported => "NuspecFile packs not supported",
             _ => code
         };
 

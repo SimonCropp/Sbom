@@ -18,14 +18,6 @@ static class Golden
                 RepositoryCommit = "0123456789abcdef0123456789abcdef01234567",
                 Copyright = "Copyright © Acme 2026"
             },
-            Files =
-            [
-                new("Acme.Widgets.nuspec", new('3', 64)),
-                new("[Content_Types].xml", new('1', 64)),
-                new("_rels/.rels", new('2', 64)),
-                new("lib/net8.0/Acme.Widgets.dll", new('4', 64)),
-                new("package/services/metadata/core-properties/0123456789abcdef0123456789abcdef.psmdcp", new('5', 64))
-            ],
             Dependencies =
             [
                 new("Newtonsoft.Json", "13.0.3", DependencyKind.Package)

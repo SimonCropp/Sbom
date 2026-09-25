@@ -21,23 +21,6 @@ failed pack.
 Fix: restore before packing (`dotnet pack` restores by default; `--no-restore` skips it).
 
 
-## Sbom002
-
-**Package not found.** Warning.
-
-Pack ran, but no `.nupkg` could be found in `@(NuGetPackOutput)` or in the package output directory
-under `{PackageId}.{PackageVersion}.nupkg`, its normalized form, or `{PackageId}.nupkg`. No SBOM is
-written.
-
-
-## Sbom003
-
-**Package is signed.** Warning.
-
-The package already contains `.signature.p7s`. Adding entries would invalidate the signature, so no
-SBOM is written. Sign in a target that runs after `SbomGenerate`, or after pack completes.
-
-
 ## Sbom004
 
 **Dependency metadata unavailable.** Low-importance message.
@@ -65,32 +48,32 @@ match:
 
 **Microsoft.Sbom.Targets also generates an SBOM.** Warning.
 
-Microsoft.Sbom.Targets is referenced and `GenerateSBOM` is `true`. Both SBOMs are written: its
-target runs first, since it deletes any existing `_manifest` folder when it re-zips the package.
-Pack time is still dominated by its component detection. Remove the Microsoft.Sbom.Targets
-reference.
-
-
-## Sbom007
-
-**Package layout not supported.** Warning.
-
-The package uses ZIP64, spans disks, or has data between its central directory and end record. NuGet
-does not produce any of these for packages under 4 GB. No SBOM is written.
+Microsoft.Sbom.Targets is referenced and `GenerateSBOM` is `true`. It runs after pack, unzips the
+package, replaces the `_manifest` folder with its own, and zips it again, so the package ends up with
+only its SPDX 2.2 SBOM, and pack time is dominated by its component detection. Remove the
+Microsoft.Sbom.Targets reference.
 
 
 ## Sbom008
 
 **SBOM generation failed.** Error.
 
-An unexpected failure, such as a corrupt package or an I/O error. The message carries the exception.
-The build fails because it asked for an SBOM and did not get one.
+An unexpected failure, such as an unreadable lock file or an I/O error writing the manifest. The
+message carries the exception. The build fails because it asked for an SBOM and did not get one.
 
 
-## Sbom009
+## Sbom010
 
-**SBOM already present.** Low-importance message.
+**NuspecFile packs not supported.** Warning.
 
-The package already contains `_manifest/spdx_3.0/manifest.spdx.json`. This happens on an
-incremental build, where NuGet skips `GenerateNuspec` because nothing changed and the previous
-package, SBOM included, stays in place.
+The project sets `NuspecFile`, so NuGet packs the files listed in that nuspec and ignores the package
+files MSBuild supplies, the SBOM among them. No SBOM is written. Pack from project properties
+instead, or skip Sbom for this project with `SbomEnabled=false`.
+
+
+## Retired codes
+
+Sbom002 (package not found), Sbom003 (package is signed), Sbom007 (package layout not supported) and
+Sbom009 (SBOM already present) were raised by versions before 0.3.0, which appended the SBOM to the
+packed nupkg. Since 0.3.0 the SBOM is handed to NuGet as one more package file, so none of those
+situations can arise. Codes are not reused.

@@ -4,10 +4,9 @@ public sealed record ReferenceInfo(string Id, bool IsPrivate);
 
 public sealed class SbomRequest
 {
-    public IReadOnlyList<string> PackOutputs { get; init; } = [];
-    public string PackageOutputPath { get; init; } = "";
-    public string PackageId { get; init; } = "";
-    public string PackageVersion { get; init; } = "";
+    public string ManifestFile { get; init; } = "";
+    public string NuspecFile { get; init; } = "";
+    public NuspecMetadata Root { get; init; } = new();
     public string LockFile { get; init; } = "";
     public string AssetsFile { get; init; } = "";
     public string PackageRoot { get; init; } = "";
@@ -24,15 +23,26 @@ public sealed class SbomRequest
 public sealed class SbomResult
 {
     public List<Diagnostic> Diagnostics { get; } = [];
-    public string? PackagePath { get; set; }
+
+    /// <summary>
+    /// The manifest and its sidecar on disk, for NuGet to pack. Empty when there is no SBOM.
+    /// </summary>
+    public List<string> Files { get; } = [];
+
+    /// <summary>
+    /// False when the manifest on disk already had these exact bytes and was left alone.
+    /// </summary>
     public bool Written { get; set; }
-    public int Files { get; set; }
+
     public int Dependencies { get; set; }
     public long ElapsedMilliseconds { get; set; }
 }
 
 public static class SbomGenerator
 {
+    public const string PackageDirectory = "_manifest/spdx_3.0/";
+    public const string PackagePath = PackageDirectory + "manifest.spdx.json";
+
     public static SbomResult Run(SbomRequest request)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -45,40 +55,17 @@ public static class SbomGenerator
                 new(
                     Diagnostics.MicrosoftSbomActive,
                     Severity.Warning,
-                    "Microsoft.Sbom.Targets is also referenced with GenerateSBOM=true. Both SBOMs are written, and the slow one dominates pack time. Remove the Microsoft.Sbom.Targets reference."));
+                    "Microsoft.Sbom.Targets is also referenced with GenerateSBOM=true. It re-zips the package after pack and replaces the _manifest folder, so this SBOM will not survive, and the slow one dominates pack time. Remove the Microsoft.Sbom.Targets reference."));
         }
 
-        var nupkg = PackageLocator.Find(request.PackOutputs, request.PackageOutputPath, request.PackageId, request.PackageVersion);
-        if (nupkg == null)
+        // A nuspec file lists its own files, and NuGet ignores every package file MSBuild supplies.
+        if (request.NuspecFile.Trim().Length > 0)
         {
             diagnostics.Add(
                 new(
-                    Diagnostics.PackageNotFound,
+                    Diagnostics.NuspecFileNotSupported,
                     Severity.Warning,
-                    $"No .nupkg for {request.PackageId} {request.PackageVersion} was found in '{request.PackageOutputPath}'. No SBOM was written."));
-            return result;
-        }
-
-        result.PackagePath = nupkg;
-
-        var scan = NupkgReader.Scan(nupkg);
-        if (scan.HasManifest)
-        {
-            diagnostics.Add(
-                new(
-                    Diagnostics.AlreadyPresent,
-                    Severity.LowMessage,
-                    $"'{nupkg}' already contains {NupkgReader.ManifestPath}; pack left the previous package in place."));
-            return result;
-        }
-
-        if (scan.IsSigned)
-        {
-            diagnostics.Add(
-                new(
-                    Diagnostics.PackageSigned,
-                    Severity.Warning,
-                    $"'{nupkg}' is signed, and adding an SBOM would invalidate the signature. Sign after the SbomGenerate target instead."));
+                    $"The package is packed from '{request.NuspecFile}', whose <files> NuGet uses instead of MSBuild's package files. No SBOM was written."));
             return result;
         }
 
@@ -107,36 +94,89 @@ public static class SbomGenerator
                     $"'{request.LockFile}' is older than the last restore. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
         }
 
-        var root = scan.Nuspec ?? new NuspecMetadata();
-        root.Id ??= request.PackageId;
-        root.Version ??= request.PackageVersion;
+        var root = request.Root;
+        if (root.Version != null)
+        {
+            root.Version = Versions.Normalize(root.Version);
+        }
 
         var dependencies = BuildDependencies(request, hasLockFile, diagnostics);
 
-        var input = new SbomInput
+        SbomInput Input(DateTimeOffset created) =>
+            new()
+            {
+                Root = root,
+                Supplier = Clean(request.Supplier),
+                Dependencies = dependencies,
+                Created = created,
+                NamespaceBaseUri = Clean(request.NamespaceBaseUri),
+                ToolVersion = request.ToolVersion
+            };
+
+        var manifestFile = request.ManifestFile;
+        var sidecarFile = manifestFile + ".sha256";
+        byte[]? existing = null;
+        if (File.Exists(manifestFile))
         {
-            Root = root,
-            Supplier = Clean(request.Supplier),
-            Files = scan.Files,
-            Dependencies = dependencies,
-            Created = Timestamps.Resolve(request.DeterministicTimestamp, request.SourceDateEpoch, request.Now),
-            NamespaceBaseUri = Clean(request.NamespaceBaseUri),
-            ToolVersion = request.ToolVersion
-        };
+            existing = File.ReadAllBytes(manifestFile);
+        }
 
-        var manifest = SpdxBuilder.Build(input);
+        var manifest = Build(request, existing, Input);
         var sidecar = Encoding.ASCII.GetBytes(Hashing.Sha256Hex(manifest));
-        NupkgWriter.Append(nupkg,
-        [
-            new(NupkgReader.ManifestPath, manifest),
-            new(NupkgReader.ManifestHashPath, sidecar)
-        ]);
 
-        result.Written = true;
-        result.Files = scan.Files.Count;
+        Directory.CreateDirectory(Path.GetDirectoryName(manifestFile)!);
+        result.Written = WriteIfChanged(manifestFile, manifest, existing);
+        WriteIfChanged(sidecarFile, sidecar, null);
+
+        result.Files.Add(manifestFile);
+        result.Files.Add(sidecarFile);
         result.Dependencies = dependencies.Count;
         result.ElapsedMilliseconds = stopwatch.ElapsedMilliseconds;
         return result;
+    }
+
+    /// <summary>
+    /// Pack's up-to-date check compares the manifest's write time with the package's, so a manifest
+    /// is only rewritten when it says something new. Left to the clock, "created" would differ on
+    /// every pack; so when the previous manifest matches in everything else, its timestamp is kept.
+    /// </summary>
+    static byte[] Build(SbomRequest request, byte[]? existing, Func<DateTimeOffset, SbomInput> input)
+    {
+        var requested = Timestamps.Explicit(request.DeterministicTimestamp, request.SourceDateEpoch);
+        if (requested != null)
+        {
+            return SpdxBuilder.Build(input(requested.Value));
+        }
+
+        if (existing != null &&
+            Timestamps.ReadCreated(Encoding.UTF8.GetString(existing)) is { } previous)
+        {
+            var candidate = SpdxBuilder.Build(input(previous));
+            if (candidate.SequenceEqual(existing))
+            {
+                return candidate;
+            }
+        }
+
+        return SpdxBuilder.Build(input(Timestamps.Resolve(null, null, request.Now)));
+    }
+
+    static bool WriteIfChanged(string path, byte[] content, byte[]? existing)
+    {
+        if (existing == null &&
+            File.Exists(path))
+        {
+            existing = File.ReadAllBytes(path);
+        }
+
+        if (existing != null &&
+            existing.SequenceEqual(content))
+        {
+            return false;
+        }
+
+        File.WriteAllBytes(path, content);
+        return true;
     }
 
     static List<SbomDependency> BuildDependencies(SbomRequest request, bool hasLockFile, List<Diagnostic> diagnostics)

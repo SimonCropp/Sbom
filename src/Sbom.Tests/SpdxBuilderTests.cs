@@ -10,10 +10,10 @@ public class SpdxBuilderTests
         var bytes = SpdxBuilder.Build(Golden.Input());
         var json = Encoding.UTF8.GetString(bytes);
 
-        // Reproduces the independently computed worked example byte for byte: the namespace's unique
-        // part is a hash of the whole document, so any difference anywhere changes it.
-        await Assert.That(json).Contains("https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/1a8ba6001e9e94bdc573fbefbbeea9a1#document");
-        await Assert.That(bytes.Length).IsEqualTo(17533);
+        // Pins the worked example byte for byte: the namespace's unique part is a hash of the whole
+        // document, so any difference anywhere changes it.
+        await Assert.That(json).Contains("https://spdx.org/spdxdocs/Acme.Widgets/1.2.3/8fbdb3b144b7f806d6edf18901df4826#document");
+        await Assert.That(bytes.Length).IsEqualTo(12969);
     }
 
     [Test]
@@ -28,7 +28,7 @@ public class SpdxBuilderTests
     }
 
     [Test]
-    public async Task FilesOnlyDocumentValidates()
+    public async Task NoDependenciesDocumentValidates()
     {
         var input = Golden.Input();
         var bare = new SbomInput
@@ -38,7 +38,6 @@ public class SpdxBuilderTests
                 Id = "Bare",
                 Version = "1.0.0"
             },
-            Files = input.Files,
             Dependencies = [],
             Created = input.Created,
             ToolVersion = "1.0.0"
@@ -54,7 +53,6 @@ public class SpdxBuilderTests
         var withProject = new SbomInput
         {
             Root = input.Root,
-            Files = input.Files,
             Dependencies =
             [
                 new("lib", null, DependencyKind.Project)
@@ -111,7 +109,6 @@ public class SpdxBuilderTests
         var reversed = new SbomInput
         {
             Root = input.Root,
-            Files = input.Files.Reverse().ToList(),
             Dependencies = input.Dependencies.Reverse().ToList(),
             Created = input.Created,
             ToolVersion = input.ToolVersion

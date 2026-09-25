@@ -18,14 +18,35 @@ For a .NET package almost all of that is wasted. NuGet has already recorded the 
 dependency graph in `packages.lock.json`, and every dependency's license and authors sit in its
 `.nuspec` in the local package cache.
 
-Pack time for the same single-package project, one `PackageReference` plus one private one:
 
-| | SBOM step |
-|---|---|
-| Microsoft.Sbom.Targets 4.1.13 | 6,000 - 7,800 ms |
-| Sbom | ~130 ms (cold task load included) |
+### Benchmark
 
-Also:
+Packing a net10.0 library with 30 direct `PackageReference`s (179 packages once transitive dependencies are resolved). Median of 5 runs of `dotnet pack --no-build -m:1`, after one warm-up pack; restore and compile excluded.<!-- include: benchmark. path: /docs/benchmark.include.md -->
+
+| | SBOM step | Whole pack | Peak memory of the pack process |
+|---|--:|--:|--:|
+| No SBOM | – | 733 ms | 108 MB |
+| Microsoft.Sbom.Targets 4.1.13 | 1,643 ms | 2,379 ms | 199 MB |
+| Sbom | 98 ms | 823 ms | 118 MB |
+
+Sbom's SBOM step is 17x faster, and it adds 11 MB of peak memory to the pack where Microsoft.Sbom.Targets adds 91 MB.
+
+Measured with SDK 10.0.401 on Microsoft Windows 10.0.28000, 16 logical cores, by `BenchmarkTests` in the integration tests.<!-- endInclude -->
+
+Microsoft.Sbom.Targets' cost grows with the size of the project directory, because Component
+Detection walks all of it and probes for Maven, pip and Ant. The fixture above sits alone in a
+temp directory, so this is close to its best case; in a real repository the same step has been
+measured at 16 seconds. Sbom's cost depends only on the lock file and the package.
+
+To rerun, after `dotnet build src -c Release` and `dotnet build IntegrationTests -c Release`:
+
+```
+dotnet run --project IntegrationTests/IntegrationTests -c Release --no-build -- --treenode-filter "/*/*/BenchmarkTests/*"
+```
+
+
+### Also
+
 
  * Offline. Nothing is fetched, so a flaky network cannot fail a pack.
  * Spec-conformant SPDX 3.0.1 that validates against the official JSON schema. sbom-tool's "3.0"

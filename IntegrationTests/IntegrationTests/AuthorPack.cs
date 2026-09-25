@@ -41,6 +41,18 @@ public static class AuthorPack
         IReadOnlyDictionary<string, string>? properties = null,
         [CallerMemberName] string caller = "")
     {
+        var work = Prepare(fixture, caller);
+        return await Repack(work, project, properties);
+    }
+
+    public static string PackagesDirectory => packages.Value;
+
+    /// <summary>
+    /// Copies the fixture into a fresh temp directory, isolated from this repository's props, targets
+    /// and SDK pin, with a feed holding the package under test.
+    /// </summary>
+    public static string Prepare(string fixture, string caller)
+    {
         var work = TestEnvironment.MakeWorkDirectory(caller);
         TestEnvironment.CopyDirectory(Path.Combine(TestEnvironment.FixturesDirectory, fixture), work);
         TestEnvironment.WriteNugetConfig(work, PackageUnderTest.Ensure().Feed);
@@ -48,7 +60,7 @@ public static class AuthorPack
         File.WriteAllText(Path.Combine(work, "Directory.Build.targets"), "<Project />");
         File.WriteAllText(Path.Combine(work, "Directory.Packages.props"), "<Project />");
         File.Copy(Path.Combine(TestEnvironment.RepoRoot, "IntegrationTests", "global.json"), Path.Combine(work, "global.json"));
-        return await Repack(work, project, properties);
+        return work;
     }
 
     /// <summary>

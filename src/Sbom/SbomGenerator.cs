@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Sbom;
 
 public sealed record ReferenceInfo(string Id, bool IsPrivate);
@@ -43,19 +41,21 @@ public static class SbomGenerator
 
         if (request.MicrosoftSbomActive)
         {
-            diagnostics.Add(new(
-                Sbom.Diagnostics.MicrosoftSbomActive,
-                Severity.Warning,
-                "Microsoft.Sbom.Targets is also referenced with GenerateSBOM=true. Both SBOMs are written, and the slow one dominates pack time. Remove the Microsoft.Sbom.Targets reference."));
+            diagnostics.Add(
+                new(
+                    Diagnostics.MicrosoftSbomActive,
+                    Severity.Warning,
+                    "Microsoft.Sbom.Targets is also referenced with GenerateSBOM=true. Both SBOMs are written, and the slow one dominates pack time. Remove the Microsoft.Sbom.Targets reference."));
         }
 
         var nupkg = PackageLocator.Find(request.PackOutputs, request.PackageOutputPath, request.PackageId, request.PackageVersion);
         if (nupkg == null)
         {
-            diagnostics.Add(new(
-                Sbom.Diagnostics.PackageNotFound,
-                Severity.Warning,
-                $"No .nupkg for {request.PackageId} {request.PackageVersion} was found in '{request.PackageOutputPath}'. No SBOM was written."));
+            diagnostics.Add(
+                new(
+                    Diagnostics.PackageNotFound,
+                    Severity.Warning,
+                    $"No .nupkg for {request.PackageId} {request.PackageVersion} was found in '{request.PackageOutputPath}'. No SBOM was written."));
             return result;
         }
 
@@ -64,28 +64,31 @@ public static class SbomGenerator
         var (hasManifest, isSigned) = NupkgReader.Probe(nupkg);
         if (hasManifest)
         {
-            diagnostics.Add(new(
-                Sbom.Diagnostics.AlreadyPresent,
-                Severity.LowMessage,
-                $"'{nupkg}' already contains {NupkgReader.ManifestPath}; pack left the previous package in place."));
+            diagnostics.Add(
+                new(
+                    Diagnostics.AlreadyPresent,
+                    Severity.LowMessage,
+                    $"'{nupkg}' already contains {NupkgReader.ManifestPath}; pack left the previous package in place."));
             return result;
         }
 
         if (isSigned)
         {
-            diagnostics.Add(new(
-                Sbom.Diagnostics.PackageSigned,
-                Severity.Warning,
-                $"'{nupkg}' is signed, and adding an SBOM would invalidate the signature. Sign after the SbomGenerate target instead."));
+            diagnostics.Add(
+                new(
+                    Diagnostics.PackageSigned,
+                    Severity.Warning,
+                    $"'{nupkg}' is signed, and adding an SBOM would invalidate the signature. Sign after the SbomGenerate target instead."));
             return result;
         }
 
         if (!File.Exists(request.LockFile))
         {
-            diagnostics.Add(new(
-                Sbom.Diagnostics.LockFileMissing,
-                Severity.Error,
-                $"'{request.LockFile}' does not exist. Set <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile> and restore, so the dependency graph is recorded."));
+            diagnostics.Add(
+                new(
+                    Diagnostics.LockFileMissing,
+                    Severity.Error,
+                    $"'{request.LockFile}' does not exist. Set <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile> and restore, so the dependency graph is recorded."));
             return result;
         }
 
@@ -93,10 +96,11 @@ public static class SbomGenerator
             File.Exists(request.AssetsFile) &&
             File.GetLastWriteTimeUtc(request.LockFile) < File.GetLastWriteTimeUtc(request.AssetsFile).AddSeconds(-2))
         {
-            diagnostics.Add(new(
-                Sbom.Diagnostics.LockFileStale,
-                Severity.Warning,
-                $"'{request.LockFile}' is older than the last restore. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
+            diagnostics.Add(
+                new(
+                    Diagnostics.LockFileStale,
+                    Severity.Warning,
+                    $"'{request.LockFile}' is older than the last restore. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
         }
 
         var scan = NupkgReader.Scan(nupkg);
@@ -166,8 +170,7 @@ public static class SbomGenerator
                 dependency.IsBuildOnly = isPrivate;
             }
 
-            if (entry.Kind == DependencyKind.Package &&
-                entry.Version != null)
+            if (entry is {Kind: DependencyKind.Package, Version: not null})
             {
                 dependency.Metadata = ReadMetadata(request.PackageRoot, entry.Id, entry.Version);
                 if (dependency.Metadata == null)
@@ -181,10 +184,11 @@ public static class SbomGenerator
 
         if (missing.Count > 0)
         {
-            diagnostics.Add(new(
-                Sbom.Diagnostics.NuspecMissing,
-                Severity.LowMessage,
-                $"No .nuspec in '{request.PackageRoot}' for: {string.Join(", ", missing)}. Those packages are listed without license or supplier."));
+            diagnostics.Add(
+                new(
+                    Diagnostics.NuspecMissing,
+                    Severity.LowMessage,
+                    $"No .nuspec in '{request.PackageRoot}' for: {string.Join(", ", missing)}. Those packages are listed without license or supplier."));
         }
 
         return result;

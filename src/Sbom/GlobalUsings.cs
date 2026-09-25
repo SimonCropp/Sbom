@@ -6,3 +6,4 @@ global using System.Linq;
 global using System.Text;
 global using System.Threading;
 global using Microsoft.Build.Framework;
+global using Sbom;

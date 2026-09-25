@@ -90,7 +90,7 @@ public class SbomTaskTests
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings).IsEmpty();
 
-        using var archive = ZipFile.OpenRead(setup.Package);
+        await using var archive = await ZipFile.OpenReadAsync(setup.Package);
         var manifest = Read(archive, NupkgReader.ManifestPath);
         var sidecar = Encoding.ASCII.GetString(Read(archive, NupkgReader.ManifestHashPath));
         await Assert.That(sidecar).IsEqualTo(Hashing.Sha256Hex(manifest));
@@ -110,11 +110,11 @@ public class SbomTaskTests
     {
         using var setup = new Setup();
         await Assert.That(setup.Task().Task.Execute()).IsTrue();
-        var first = File.ReadAllBytes(setup.Package);
+        var first = await File.ReadAllBytesAsync(setup.Package);
 
         var (task, engine) = setup.Task();
         await Assert.That(task.Execute()).IsTrue();
-        await Assert.That(File.ReadAllBytes(setup.Package).SequenceEqual(first)).IsTrue();
+        await Assert.That((await File.ReadAllBytesAsync(setup.Package)).SequenceEqual(first)).IsTrue();
         await Assert.That(engine.Messages.Any(_ => _.Code == Diagnostics.AlreadyPresent)).IsTrue();
     }
 
@@ -128,8 +128,8 @@ public class SbomTaskTests
         task.PackageRoot = one.PackageRoot;
         task.Execute();
 
-        using var a = ZipFile.OpenRead(one.Package);
-        using var b = ZipFile.OpenRead(two.Package);
+        await using var a = await ZipFile.OpenReadAsync(one.Package);
+        await using var b = await ZipFile.OpenReadAsync(two.Package);
         await Assert.That(Read(a, NupkgReader.ManifestPath).SequenceEqual(Read(b, NupkgReader.ManifestPath))).IsTrue();
     }
 

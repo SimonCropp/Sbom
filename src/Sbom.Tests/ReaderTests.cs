@@ -122,7 +122,7 @@ public class ReaderTests
     [Test]
     public async Task Timestamps()
     {
-        DateTimeOffset Now() => new(2030, 1, 1, 0, 0, 0, 500, TimeSpan.Zero);
+        static DateTimeOffset Now() => new(2030, 1, 1, 0, 0, 0, 500, TimeSpan.Zero);
         await Assert.That(Sbom.Timestamps.Format(Sbom.Timestamps.Resolve("1767225600", "1", Now))).IsEqualTo("2026-01-01T00:00:00Z");
         await Assert.That(Sbom.Timestamps.Format(Sbom.Timestamps.Resolve("true", "1767225600", Now))).IsEqualTo("2026-01-01T00:00:00Z");
         await Assert.That(Sbom.Timestamps.Format(Sbom.Timestamps.Resolve("2026-02-03T04:05:06+10:00", null, Now))).IsEqualTo("2026-02-02T18:05:06Z");

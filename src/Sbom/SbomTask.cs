@@ -1,5 +1,3 @@
-using System.Reflection;
-using Sbom;
 using Task = Microsoft.Build.Utilities.Task;
 
 /// <summary>

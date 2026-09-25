@@ -22,9 +22,9 @@ public sealed class JsonObject : SortedDictionary<string, object>
         {
             case null:
                 return this;
-            case string text when text.Length == 0:
+            case string {Length: 0}:
                 return this;
-            case List<object> list when list.Count == 0:
+            case List<object> {Count: 0}:
                 return this;
         }
 

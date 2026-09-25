@@ -6,12 +6,12 @@ public class NupkgWriterTests
         using var temp = new TempDirectory();
         var path = temp.Combine("A.1.0.0.nupkg");
         TestPackage.Create(path, "A", "1.0.0");
-        var before = File.ReadAllBytes(path);
+        var before = await File.ReadAllBytesAsync(path);
         var directoryOffset = DirectoryOffset(before);
 
         NupkgWriter.Append(path, [new("_manifest/x.json", "{\"a\": 1}"u8.ToArray())]);
 
-        var after = File.ReadAllBytes(path);
+        var after = await File.ReadAllBytesAsync(path);
         await Assert.That(after.Take(directoryOffset).SequenceEqual(before.Take(directoryOffset))).IsTrue();
     }
 
@@ -29,13 +29,13 @@ public class NupkgWriterTests
             new("_manifest/spdx_3.0/manifest.spdx.json.sha256", "abc"u8.ToArray())
         ]);
 
-        using var archive = ZipFile.OpenRead(path);
+        await using var archive = await ZipFile.OpenReadAsync(path);
         await Assert.That(archive.Entries.Count).IsEqualTo(6);
         var entry = archive.GetEntry("_manifest/spdx_3.0/manifest.spdx.json")!;
         using var buffer = new MemoryStream();
-        using (var stream = entry.Open())
+        await using (var stream = await entry.OpenAsync())
         {
-            stream.CopyTo(buffer);
+            await stream.CopyToAsync(buffer);
         }
 
         await Assert.That(buffer.ToArray().SequenceEqual(content)).IsTrue();
@@ -48,8 +48,8 @@ public class NupkgWriterTests
         // Every original entry still reads.
         foreach (var original in archive.Entries)
         {
-            using var stream = original.Open();
-            stream.CopyTo(Stream.Null);
+            await using var stream = await original.OpenAsync();
+            await stream.CopyToAsync(Stream.Null);
         }
     }
 
@@ -58,8 +58,8 @@ public class NupkgWriterTests
     {
         using var temp = new TempDirectory();
         var path = temp.Combine("A.1.0.0.nupkg");
-        using (var stream = File.Create(path))
-        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
+        await using (var stream = File.Create(path))
+        await using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
         {
             archive.Comment = "kept";
             archive.CreateEntry("A.nuspec");
@@ -67,7 +67,7 @@ public class NupkgWriterTests
 
         NupkgWriter.Append(path, [new("x.txt", "x"u8.ToArray())]);
 
-        using var read = ZipFile.OpenRead(path);
+        await using var read = await ZipFile.OpenReadAsync(path);
         await Assert.That(read.Comment).IsEqualTo("kept");
         await Assert.That(read.Entries.Count).IsEqualTo(2);
     }
@@ -79,18 +79,18 @@ public class NupkgWriterTests
         // ZipArchiveMode.Update corrupts on .NET 10.
         using var temp = new TempDirectory();
         var path = temp.Combine("A.1.0.0.nupkg");
-        using (var file = File.Create(path))
-        using (var forwardOnly = new ForwardOnlyStream(file))
-        using (var archive = new ZipArchive(forwardOnly, ZipArchiveMode.Create))
+        await using (var file = File.Create(path))
+        await using (var forwardOnly = new ForwardOnlyStream(file))
+        await using (var archive = new ZipArchive(forwardOnly, ZipArchiveMode.Create))
         {
-            using var writer = new StreamWriter(archive.CreateEntry("A.nuspec").Open());
-            writer.Write("<package/>");
+            await using var writer = new StreamWriter(await archive.CreateEntry("A.nuspec").OpenAsync());
+            await writer.WriteAsync("<package/>");
         }
 
         NupkgWriter.Append(path, [new("x.txt", "x"u8.ToArray())]);
 
-        using var read = ZipFile.OpenRead(path);
-        using var reader = new StreamReader(read.GetEntry("A.nuspec")!.Open());
+        await using var read = await ZipFile.OpenReadAsync(path);
+        using var reader = new StreamReader(await read.GetEntry("A.nuspec")!.OpenAsync());
         await Assert.That(await reader.ReadToEndAsync()).IsEqualTo("<package/>");
     }
 

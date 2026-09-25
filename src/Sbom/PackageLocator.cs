@@ -85,7 +85,7 @@ public static class PackageLocator
             numbers.Add("0");
         }
 
-        if (numbers.Count == 4 && numbers[3] == "0")
+        if (numbers is [_, _, _, "0"])
         {
             numbers.RemoveAt(3);
         }

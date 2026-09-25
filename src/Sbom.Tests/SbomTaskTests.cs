@@ -391,7 +391,7 @@ public class SbomTaskTests
         await Assert.That(outputs.SetEquals(properties.Where(IsOutput).Select(_ => _.Name))).IsTrue();
     }
 
-    static bool IsOutput(System.Reflection.PropertyInfo property) =>
+    static bool IsOutput(PropertyInfo property) =>
         property.IsDefined(typeof(OutputAttribute), false);
 
     static int Scoped(string json, string scope) =>

@@ -15,14 +15,11 @@ public sealed class JsonObject() :
     /// </summary>
     public JsonObject Set(string name, object? value)
     {
-        switch (value)
+        if (value is null or
+            string {Length: 0} or
+            List<object> {Count: 0})
         {
-            case null:
-                return this;
-            case string {Length: 0}:
-                return this;
-            case List<object> {Count: 0}:
-                return this;
+            return this;
         }
 
         this[name] = value;

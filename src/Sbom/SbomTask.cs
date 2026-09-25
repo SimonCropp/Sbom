@@ -70,7 +70,7 @@ public class SbomTask : Task
             }
 
             PackageFiles = result.Files
-                .Select(_ => (ITaskItem)new TaskItem(
+                .Select(ITaskItem (_) => new TaskItem(
                     _,
                     new Dictionary<string, string>
                     {

@@ -256,7 +256,7 @@ public static class SpdxBuilder
                     .Set("creationInfo", creationInfo)
                     .Set("from", builder.Iri(_.From))
                     .Set("relationshipType", _.Type)
-                    .Set("to", _.To.Select(to => (object)builder.Iri(to)).ToList());
+                    .Set("to", _.To.Select(object (to) => builder.Iri(to)).ToList());
                 if (_.Scope == null)
                 {
                     body.Set("type", "Relationship");
@@ -292,7 +292,7 @@ public static class SpdxBuilder
             .Set("software_sbomType", new List<object> { "build" })
             .Set("profileConformance", profiles)
             .Set("rootElement", new List<object> { builder.Iri(rootLocal) })
-            .Set("element", memberLocals.Select(_ => (object)builder.Iri(_)).ToList());
+            .Set("element", memberLocals.Select(object (_) => builder.Iri(_)).ToList());
 
         var document = new JsonObject()
             .Set("spdxId", builder.Iri(documentLocal))
@@ -302,7 +302,7 @@ public static class SpdxBuilder
             .Set("dataLicense", builder.Iri(dataLicense))
             .Set("profileConformance", profiles)
             .Set("rootElement", new List<object> { builder.Iri(sbomLocal) })
-            .Set("element", new[] { sbomLocal }.Concat(memberLocals).Select(_ => (object)builder.Iri(_)).ToList());
+            .Set("element", new[] { sbomLocal }.Concat(memberLocals).Select(object (_) => builder.Iri(_)).ToList());
 
         var creation = new JsonObject()
             .Set("@id", creationInfo)
@@ -318,8 +318,8 @@ public static class SpdxBuilder
             document,
             sbom
         };
-        graph.AddRange(ordered.Select(_ => (object)_.Body));
-        graph.AddRange(relationshipElements.Select(_ => (object)_.Body));
+        graph.AddRange(ordered.Select(object (_) => _.Body));
+        graph.AddRange(relationshipElements.Select(object (_) => _.Body));
 
         return new JsonObject()
             .Set("@context", Context)

@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Sbom;
 
 public enum DependencyKind
@@ -29,32 +27,38 @@ public sealed class LockedDependency(string id, string? version, DependencyKind 
 /// </summary>
 public static class LockFile
 {
-    public static List<LockedDependency> Read(string path)
-    {
-        using var stream = File.OpenRead(path);
-        return Read(stream);
-    }
+    public static List<LockedDependency> Read(string path) =>
+        ReadText(File.ReadAllText(path));
 
     public static List<LockedDependency> Read(Stream stream)
     {
-        using var document = JsonDocument.Parse(stream);
+        using var reader = new StreamReader(stream);
+        return ReadText(reader.ReadToEnd());
+    }
+
+    public static List<LockedDependency> ReadText(string json)
+    {
         var byKey = new Dictionary<string, LockedDependency>(StringComparer.Ordinal);
-        if (!document.RootElement.TryGetProperty("dependencies", out var frameworks) ||
-            frameworks.ValueKind != JsonValueKind.Object)
+        if (JsonReader.Parse(json) is not JsonObject root ||
+            !root.TryGetValue("dependencies", out var value) ||
+            value is not JsonObject frameworks)
         {
             return [];
         }
 
-        foreach (var framework in frameworks.EnumerateObject())
+        foreach (var framework in frameworks)
         {
             // RID-specific graphs (net8.0/win-x64) add runtime.* packages that only matter to a
             // self-contained app, never to a package.
-            if (framework.Name.Contains('/'))
+            if (framework.Key.Contains('/'))
             {
                 continue;
             }
 
-            ReadFramework(framework.Value, byKey);
+            if (framework.Value is JsonObject entries)
+            {
+                ReadFramework(entries, byKey);
+            }
         }
 
         return byKey.Values
@@ -62,22 +66,16 @@ public static class LockFile
             .ToList();
     }
 
-    static void ReadFramework(JsonElement framework, Dictionary<string, LockedDependency> byKey)
+    static void ReadFramework(JsonObject framework, Dictionary<string, LockedDependency> byKey)
     {
-        if (framework.ValueKind != JsonValueKind.Object)
-        {
-            return;
-        }
-
         // Within one framework each id resolves to exactly one version, so edges resolve by id.
         var resolved = new Dictionary<string, LockedDependency>(StringComparer.OrdinalIgnoreCase);
         var edges = new List<(LockedDependency From, string ToId)>();
         var referenced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var entry in framework.EnumerateObject())
+        foreach (var entry in framework)
         {
-            var value = entry.Value;
-            if (value.ValueKind != JsonValueKind.Object)
+            if (entry.Value is not JsonObject value)
             {
                 continue;
             }
@@ -90,10 +88,10 @@ public static class LockFile
             }
 
             var version = GetString(value, "resolved");
-            var key = LockedDependency.MakeKey(entry.Name, version);
+            var key = LockedDependency.MakeKey(entry.Key, version);
             if (!byKey.TryGetValue(key, out var dependency))
             {
-                dependency = new(entry.Name, version, kind);
+                dependency = new(entry.Key, version, kind);
                 byKey.Add(key, dependency);
             }
 
@@ -103,15 +101,15 @@ public static class LockFile
                 dependency.IsDirect = true;
             }
 
-            resolved[entry.Name] = dependency;
+            resolved[entry.Key] = dependency;
 
-            if (value.TryGetProperty("dependencies", out var children) &&
-                children.ValueKind == JsonValueKind.Object)
+            if (value.TryGetValue("dependencies", out var children) &&
+                children is JsonObject childObject)
             {
-                foreach (var child in children.EnumerateObject())
+                foreach (var child in childObject)
                 {
-                    edges.Add((dependency, child.Name));
-                    referenced.Add(child.Name);
+                    edges.Add((dependency, child.Key));
+                    referenced.Add(child.Key);
                 }
             }
         }
@@ -136,12 +134,11 @@ public static class LockFile
         }
     }
 
-    static string? GetString(JsonElement element, string name)
+    static string? GetString(JsonObject element, string name)
     {
-        if (element.TryGetProperty(name, out var property) &&
-            property.ValueKind == JsonValueKind.String)
+        if (element.TryGetValue(name, out var property))
         {
-            return property.GetString();
+            return property as string;
         }
 
         return null;

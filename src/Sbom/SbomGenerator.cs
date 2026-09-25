@@ -61,8 +61,8 @@ public static class SbomGenerator
 
         result.PackagePath = nupkg;
 
-        var (hasManifest, isSigned) = NupkgReader.Probe(nupkg);
-        if (hasManifest)
+        var scan = NupkgReader.Scan(nupkg);
+        if (scan.HasManifest)
         {
             diagnostics.Add(
                 new(
@@ -72,7 +72,7 @@ public static class SbomGenerator
             return result;
         }
 
-        if (isSigned)
+        if (scan.IsSigned)
         {
             diagnostics.Add(
                 new(
@@ -103,7 +103,6 @@ public static class SbomGenerator
                     $"'{request.LockFile}' is older than the last restore. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
         }
 
-        var scan = NupkgReader.Scan(nupkg);
         var root = scan.Nuspec ?? new NuspecMetadata();
         root.Id ??= request.PackageId;
         root.Version ??= request.PackageVersion;
@@ -154,10 +153,26 @@ public static class SbomGenerator
             privacy[reference.Id] = reference.IsPrivate;
         }
 
+        // Opening each nuspec dominates generation (file-open latency, not parsing), so they are read
+        // concurrently. Results land by index, so output order does not depend on scheduling.
+        var metadata = new NuspecMetadata?[locked.Count];
+        Parallel.For(
+            0,
+            locked.Count,
+            index =>
+            {
+                var entry = locked[index];
+                if (entry is {Kind: DependencyKind.Package, Version: not null})
+                {
+                    metadata[index] = ReadMetadata(request.PackageRoot, entry.Id, entry.Version);
+                }
+            });
+
         var missing = new List<string>();
         var result = new List<SbomDependency>();
-        foreach (var entry in locked)
+        for (var index = 0; index < locked.Count; index++)
         {
+            var entry = locked[index];
             var dependency = new SbomDependency(entry.Id, entry.Version, entry.Kind)
             {
                 ContentHashHex = entry.ContentHashHex,
@@ -172,7 +187,7 @@ public static class SbomGenerator
 
             if (entry is {Kind: DependencyKind.Package, Version: not null})
             {
-                dependency.Metadata = ReadMetadata(request.PackageRoot, entry.Id, entry.Version);
+                dependency.Metadata = metadata[index];
                 if (dependency.Metadata == null)
                 {
                     missing.Add($"{entry.Id} {entry.Version}");

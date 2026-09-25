@@ -6,9 +6,6 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
     <NoPackageAnalysis>true</NoPackageAnalysis>
-    <!-- Pulls System.Text.Json and its netstandard2.0 closure into bin/{Configuration}/netstandard2.0/
-         so _Sbom_PackTaskDlls can glob them into tasks/. -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <!-- Identity tracks the release. MSBuild on .NET Framework hands back an already-loaded assembly
          of the same identity, so a reused node that ran one Sbom version would otherwise run that
@@ -26,7 +23,6 @@
     <PackageReference Include="Microsoft.Build.Framework" PrivateAssets="all" ExcludeAssets="Runtime" />
     <PackageReference Include="ProjectDefaults" PrivateAssets="all" />
     <PackageReference Include="Polyfill" PrivateAssets="all" />
-    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <ItemGroup>

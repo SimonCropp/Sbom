@@ -18,30 +18,6 @@ public static class NupkgReader
     public const string ManifestPath = "_manifest/spdx_3.0/manifest.spdx.json";
     public const string ManifestHashPath = ManifestPath + ".sha256";
 
-    /// <summary>
-    /// Reads only the central directory. Enough to decide whether there is any work to do.
-    /// </summary>
-    public static (bool HasManifest, bool IsSigned) Probe(string nupkg)
-    {
-        using var archive = ZipFile.OpenRead(nupkg);
-        var hasManifest = false;
-        var isSigned = false;
-        foreach (var entry in archive.Entries)
-        {
-            if (string.Equals(entry.FullName, ManifestPath, StringComparison.OrdinalIgnoreCase))
-            {
-                hasManifest = true;
-            }
-
-            if (string.Equals(entry.FullName, ".signature.p7s", StringComparison.OrdinalIgnoreCase))
-            {
-                isSigned = true;
-            }
-        }
-
-        return (hasManifest, isSigned);
-    }
-
     public static PackageScan Scan(string nupkg)
     {
         using var stream = File.OpenRead(nupkg);
@@ -52,27 +28,34 @@ public static class NupkgReader
     {
         var scan = new PackageScan();
         using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
+
+        // The central directory alone decides whether there is any work to do. Nothing is hashed for
+        // a package that already carries an SBOM, or is signed.
+        foreach (var entry in archive.Entries)
+        {
+            if (string.Equals(entry.FullName, ManifestPath, StringComparison.OrdinalIgnoreCase))
+            {
+                scan.HasManifest = true;
+            }
+
+            if (string.Equals(entry.FullName, ".signature.p7s", StringComparison.OrdinalIgnoreCase))
+            {
+                scan.IsSigned = true;
+            }
+        }
+
+        if (scan.HasManifest || scan.IsSigned)
+        {
+            return scan;
+        }
+
         foreach (var entry in archive.Entries)
         {
             var name = entry.FullName;
-            if (name.EndsWith("/", StringComparison.Ordinal))
+            if (name.EndsWith("/", StringComparison.Ordinal) ||
+                name.StartsWith(ManifestDirectory, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
-            }
-
-            if (name.StartsWith(ManifestDirectory, StringComparison.OrdinalIgnoreCase))
-            {
-                if (string.Equals(name, ManifestPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    scan.HasManifest = true;
-                }
-
-                continue;
-            }
-
-            if (string.Equals(name, ".signature.p7s", StringComparison.OrdinalIgnoreCase))
-            {
-                scan.IsSigned = true;
             }
 
             if (!name.Contains('/') &&

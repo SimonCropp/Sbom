@@ -112,7 +112,9 @@ public class AuthorPackTests
         await Assert.That(entries.Any(_ => _.StartsWith("lib/", StringComparison.Ordinal))).IsFalse();
         await Assert.That(entries.Any(_ => _.Contains("//", StringComparison.Ordinal))).IsFalse();
         await Assert.That(entries).Contains("tasks/netstandard2.0/Sbom.dll");
-        await Assert.That(entries).Contains("tasks/netstandard2.0/System.Text.Json.dll");
+        // No dependencies: the task is one assembly, so nothing can conflict with what MSBuild loads.
+        await Assert.That(entries.Where(_ => _.StartsWith("tasks/", StringComparison.Ordinal)))
+            .IsEquivalentTo(["tasks/netstandard2.0/Sbom.dll"]);
         await Assert.That(entries).Contains("build/Sbom.targets");
         await Assert.That(entries).Contains("buildMultiTargeting/Sbom.targets");
     }

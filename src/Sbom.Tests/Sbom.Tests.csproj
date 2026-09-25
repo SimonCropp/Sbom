@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>testing</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sbom\Sbom.csproj" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" />
+    <PackageReference Include="Microsoft.Build.Framework" />
+    <PackageReference Include="ProjectDefaults" PrivateAssets="all" />
+    <PackageReference Include="JsonSchema.Net" />
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Verify" />
+    <PackageReference Include="Verify.TUnit" />
+    <PackageReference Include="Verify.DiffPlex" />
+    <PackageReference Include="DiffEngine" />
+    <!-- Regenerates readme.md and docs/*.md on every build of this project, and with
+         ValidateContent fails the build when a snippet has drifted from its source. -->
+    <PackageReference Include="MarkdownSnippets.MsBuild" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Schemas\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

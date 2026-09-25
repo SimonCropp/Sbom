@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- netstandard2.0 only, and loaded by every host. It works under MSBuild on .NET Framework
+         and under MSBuild on .NET of any version, which a net10.0 asset does not. -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <NoPackageAnalysis>true</NoPackageAnalysis>
+    <!-- Pulls System.Text.Json and its netstandard2.0 closure into bin/{Configuration}/netstandard2.0/
+         so _Sbom_PackTaskDlls can glob them into tasks/. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- Identity tracks the release. MSBuild on .NET Framework hands back an already-loaded assembly
+         of the same identity, so a reused node that ran one Sbom version would otherwise run that
+         code for a project referencing another. -->
+    <AssemblyVersion>$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^\d+\.\d+\.\d+').Value)</AssemblyVersion>
+    <!-- NU5128: no lib/ or ref/ for the declared frameworks. NU5100: assemblies outside lib/.
+         Both are the intended shape for a task package. -->
+    <NoWarn>$(NoWarn);NU5128;NU5100</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ExcludeAssets=Runtime keeps the MSBuild assemblies out of bin/, so the glob below cannot
+         ship a second copy of MSBuild into the process that is already running it. -->
+    <PackageReference Include="Microsoft.Build.Utilities.Core" PrivateAssets="all" ExcludeAssets="Runtime" />
+    <PackageReference Include="Microsoft.Build.Framework" PrivateAssets="all" ExcludeAssets="Runtime" />
+    <PackageReference Include="ProjectDefaults" PrivateAssets="all" />
+    <PackageReference Include="Polyfill" PrivateAssets="all" />
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="build\Sbom.targets" Pack="true"
+          PackagePath="build\Sbom.targets;buildMultiTargeting\Sbom.targets" />
+  </ItemGroup>
+
+  <Target Name="_Sbom_PackTaskDlls" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <!-- Forward slash, not backslash, in PackagePath: MSBuild on Linux normalizes a trailing '\'
+           to '/', then NuGet pack appends another, producing 'tasks/netstandard2.0//Sbom.dll'. -->
+      <None Include="bin\$(Configuration)\netstandard2.0\*.dll" Pack="true" PackagePath="tasks/netstandard2.0/" Visible="false" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -1,0 +1,11 @@
+﻿{
+  Id: A,
+  Version: 1.0.0,
+  Authors: Acme,
+  LicenseExpression: MIT OR Apache-2.0,
+  ProjectUrl: https://example.com/a,
+  Copyright: © Acme,
+  RepositoryUrl: https://github.com/acme/a,
+  RepositoryCommit: abc,
+  IsTool: true
+}

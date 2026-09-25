@@ -1,0 +1,107 @@
+<Project>
+  <!--
+    Every private property is scoped _Sbom_. MSBuild properties are global, so an unscoped name
+    written by two imports means the last import wins for the whole project.
+  -->
+  <PropertyGroup>
+    <!-- One assembly for every host. netstandard2.0 loads under MSBuild on .NET Framework and under
+         MSBuild on .NET of any version. Overridable only so a repository can pack with a task it
+         just built. -->
+    <_Sbom_Assembly Condition="'$(_Sbom_Assembly)' == ''">$(MSBuildThisFileDirectory)..\tasks\netstandard2.0\Sbom.dll</_Sbom_Assembly>
+  </PropertyGroup>
+
+  <UsingTask TaskName="SbomTask" AssemblyFile="$(_Sbom_Assembly)" />
+
+  <!--
+    Runs in whichever build ran Pack: the outer build of a multi-targeted project (hence
+    buildMultiTargeting/), or the only build of a single-targeted one. GeneratePackageOnBuild reaches
+    Pack through NuGet's _PackAsBuildAfterTarget, so AfterTargets fires there too.
+
+    Everything is read inside the target, not at evaluation: targets that run before GenerateNuspec
+    still change package metadata, and the root package's identity is read from the nuspec packed
+    into the nupkg anyway.
+
+    No Inputs/Outputs. The nupkg is both input and output, so a timestamp check cannot say whether
+    it already carries an SBOM. The task looks for the manifest entry itself, which also covers a
+    GenerateNuspec skipped as up to date.
+  -->
+  <Target Name="SbomGenerate"
+          AfterTargets="Pack"
+          Condition="'$(IsPackable)' == 'true' and
+                     '$(PackageReferenceCompatibleProjectStyle)' == 'true' and
+                     '$(DesignTimeBuild)' != 'true' and
+                     '$(NCrunch)' != '1'">
+    <PropertyGroup>
+      <_Sbom_Enabled>$(SbomEnabled)</_Sbom_Enabled>
+      <!-- GenerateSBOM is Microsoft.Sbom.Targets' switch. A 'false' there is honoured only when that
+           package is absent: its targets default GenerateSBOM to 'false' when unset, so with it
+           present a 'false' says nothing about intent. -->
+      <_Sbom_Enabled Condition="'$(_Sbom_Enabled)' == '' and '$(GenerateSBOM)' == 'false' and '$(GenerateSbom_TFM)' == ''">false</_Sbom_Enabled>
+      <_Sbom_Enabled Condition="'$(_Sbom_Enabled)' == ''">true</_Sbom_Enabled>
+
+      <_Sbom_MicrosoftSbomActive>false</_Sbom_MicrosoftSbomActive>
+      <_Sbom_MicrosoftSbomActive Condition="'$(GenerateSbom_TFM)' != '' and '$(GenerateSBOM)' == 'true'">true</_Sbom_MicrosoftSbomActive>
+
+      <_Sbom_LockFile>$(NuGetLockFilePath)</_Sbom_LockFile>
+      <_Sbom_LockFile Condition="'$(_Sbom_LockFile)' == ''">packages.lock.json</_Sbom_LockFile>
+      <_Sbom_LockFile>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(_Sbom_LockFile)'))</_Sbom_LockFile>
+
+      <!-- ProjectAssetsFile is undefined in the outer build of a multi-targeted project. Restore
+           writes the assets file to RestoreOutputPath, which NuGet defines for both builds. -->
+      <_Sbom_AssetsFile>$(ProjectAssetsFile)</_Sbom_AssetsFile>
+      <_Sbom_AssetsFile Condition="'$(_Sbom_AssetsFile)' == '' and '$(RestoreOutputPath)' != ''">$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(RestoreOutputPath)', 'project.assets.json'))</_Sbom_AssetsFile>
+
+      <_Sbom_PackageOutputPath>$(PackageOutputAbsolutePath)</_Sbom_PackageOutputPath>
+      <_Sbom_PackageOutputPath Condition="'$(_Sbom_PackageOutputPath)' == '' and '$(PackageOutputPath)' != ''">$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(PackageOutputPath)'))</_Sbom_PackageOutputPath>
+    </PropertyGroup>
+
+    <!-- Microsoft.Sbom.Targets unzips the nupkg, deletes any _manifest folder, and zips it back. Its
+         GenerateSbomTarget also hangs off Pack, and the order of two AfterTargets is import order.
+         Running it here first means it cannot erase this SBOM; a target that has already run is not
+         run twice. -->
+    <CallTarget Targets="GenerateSbomTarget"
+                Condition="'$(_Sbom_Enabled)' == 'true' and '$(_Sbom_MicrosoftSbomActive)' == 'true'" />
+
+    <!-- The lock file records no PrivateAssets, so the references come from each framework's own
+         build. These are the global properties NuGet's _WalkEachTargetPerFramework just used, so
+         the project instances already exist and nothing is evaluated again. -->
+    <ItemGroup Condition="'$(_Sbom_Enabled)' == 'true'">
+      <_Sbom_Framework Include="@(_TargetFrameworks)" />
+      <_Sbom_Framework Include="$(TargetFramework)" Condition="'@(_TargetFrameworks)' == '' and '$(TargetFramework)' != ''" />
+    </ItemGroup>
+    <MSBuild Condition="'$(_Sbom_Enabled)' == 'true' and '@(_Sbom_Framework)' != ''"
+             Projects="$(MSBuildProjectFullPath)"
+             Targets="_Sbom_GetReferences"
+             Properties="TargetFramework=%(_Sbom_Framework.Identity);BuildProjectReferences=false">
+      <Output TaskParameter="TargetOutputs" ItemName="_Sbom_Reference" />
+    </MSBuild>
+
+    <SbomTask Condition="'$(_Sbom_Enabled)' == 'true'"
+              PackOutputs="@(NuGetPackOutput)"
+              PackageOutputPath="$(_Sbom_PackageOutputPath)"
+              PackageId="$(PackageId)"
+              PackageVersion="$(PackageVersion)"
+              LockFile="$(_Sbom_LockFile)"
+              AssetsFile="$(_Sbom_AssetsFile)"
+              PackageRoot="$(NuGetPackageRoot)"
+              References="@(_Sbom_Reference)"
+              Supplier="$(SbomSupplier)"
+              NamespaceBaseUri="$(SbomNamespaceBaseUri)"
+              DeterministicTimestamp="$(DeterministicTimestamp)"
+              SourceDateEpoch="$(SOURCE_DATE_EPOCH)"
+              MicrosoftSbomActive="$(_Sbom_MicrosoftSbomActive)" />
+  </Target>
+
+  <!-- Called per target framework. Project references are keyed by file name, which is how the
+       lock file names them. -->
+  <Target Name="_Sbom_GetReferences" Returns="@(_Sbom_FrameworkReference)">
+    <ItemGroup>
+      <!-- Implicit references included: NETStandard.Library carries PrivateAssets=All on its implicit
+           item, and that is what marks it build-only. -->
+      <_Sbom_FrameworkReference Include="@(PackageReference)" />
+      <_Sbom_FrameworkReference Include="%(ProjectReference.Filename)"
+                                PrivateAssets="%(ProjectReference.PrivateAssets)"
+                                Condition="'@(ProjectReference)' != ''" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="../.gitattributes" />
+    <File Path="../.gitignore" />
+    <File Path="../readme.md" />
+    <File Path="../claude.md" />
+    <File Path="../docs/DiagnosticCodes.md" />
+    <File Path="../global.json" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="mdsnippets.json" />
+    <File Path="nuget.config" />
+    <File Path="../.github/workflows/build.yml" />
+  </Folder>
+  <Project Path="Sbom/Sbom.csproj" />
+  <Project Path="Sbom.Tests/Sbom.Tests.csproj" />
+</Solution>

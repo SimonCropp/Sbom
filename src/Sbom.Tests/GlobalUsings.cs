@@ -1,0 +1,15 @@
+global using System;
+global using System.Collections;
+global using System.Collections.Generic;
+global using System.IO;
+global using System.IO.Compression;
+global using System.Linq;
+global using System.Runtime.CompilerServices;
+global using System.Text;
+global using System.Threading.Tasks;
+global using Microsoft.Build.Framework;
+global using TaskItem = Microsoft.Build.Utilities.TaskItem;
+global using Sbom;
+global using TUnit.Core;
+global using VerifyTests.DiffPlex;
+global using static VerifyTUnit.Verifier;

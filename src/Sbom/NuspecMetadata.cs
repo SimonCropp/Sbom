@@ -1,5 +1,3 @@
-using System.Xml;
-
 namespace Sbom;
 
 public sealed class NuspecMetadata

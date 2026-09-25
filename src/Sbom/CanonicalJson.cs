@@ -6,12 +6,9 @@ namespace Sbom;
 /// escapes JSON requires. System.Text.Json's encoder escapes '+', '©' and HTML characters, and its
 /// newline follows the platform, so it cannot produce byte-identical output across hosts.
 /// </summary>
-public sealed class JsonObject : SortedDictionary<string, object>
+public sealed class JsonObject() :
+    SortedDictionary<string, object>(StringComparer.Ordinal)
 {
-    public JsonObject() : base(StringComparer.Ordinal)
-    {
-    }
-
     /// <summary>
     /// Adds the member unless the value is null or empty. Absent is the SPDX 3 way of saying
     /// "no assertion".

@@ -121,17 +121,17 @@ public class NupkgWriterTests
         using var temp = new TempDirectory();
         var path = temp.Combine("A.1.0.0.nupkg");
         TestPackage.Create(path, "A", "1.0.0");
-        var before = File.ReadAllBytes(path);
+        var before = await File.ReadAllBytesAsync(path);
 
         using var memory = new MemoryStream();
         memory.Write(before);
-        using var failing = new FailOnceStream(memory);
+        await using var failing = new FailOnceStream(memory);
 
         await Assert.That(() => NupkgWriter.Append(failing, [new("x.txt", new byte[10_000])])).Throws<IOException>();
         await Assert.That(memory.ToArray().SequenceEqual(before)).IsTrue();
 
         // Still a readable package.
-        using var archive = new ZipArchive(new MemoryStream(memory.ToArray()), ZipArchiveMode.Read);
+        await using var archive = new ZipArchive(new MemoryStream(memory.ToArray()), ZipArchiveMode.Read);
         await Assert.That(archive.Entries.Count).IsEqualTo(4);
     }
 
@@ -139,7 +139,7 @@ public class NupkgWriterTests
     public async Task Zip64Throws()
     {
         using var stream = new MemoryStream();
-        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        await using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
         {
             for (var i = 0; i < ushort.MaxValue + 1; i++)
             {

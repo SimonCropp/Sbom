@@ -197,7 +197,7 @@ public class SbomTaskTests
 
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.LockFileStale);
-        using var archive = ZipFile.OpenRead(setup.Package);
+        await using var archive = await ZipFile.OpenReadAsync(setup.Package);
         await Assert.That(archive.GetEntry(NupkgReader.ManifestPath)).IsNotNull();
     }
 
@@ -220,12 +220,12 @@ public class SbomTaskTests
     {
         using var setup = new Setup();
         // More than 65535 entries forces .NET to write ZIP64 end records, which the appender refuses.
-        using (var stream = File.Create(setup.Package))
-        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
+        await using (var stream = File.Create(setup.Package))
+        await using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
         {
-            using (var writer = new StreamWriter(archive.CreateEntry("A.nuspec").Open()))
+            await using (var writer = new StreamWriter(await archive.CreateEntry("A.nuspec").OpenAsync()))
             {
-                writer.Write(TestPackage.Nuspec("A", "1.0.0"));
+                await writer.WriteAsync(TestPackage.Nuspec("A", "1.0.0"));
             }
 
             for (var i = 0; i < ushort.MaxValue + 1; i++)
@@ -234,19 +234,19 @@ public class SbomTaskTests
             }
         }
 
-        var before = File.ReadAllBytes(setup.Package);
+        var before = await File.ReadAllBytesAsync(setup.Package);
         var (task, engine) = setup.Task();
 
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.UnsupportedLayout);
-        await Assert.That(File.ReadAllBytes(setup.Package).SequenceEqual(before)).IsTrue();
+        await Assert.That((await File.ReadAllBytesAsync(setup.Package)).SequenceEqual(before)).IsTrue();
     }
 
     [Test]
     public async Task CorruptPackageFailsTheBuild()
     {
         using var setup = new Setup();
-        File.WriteAllText(setup.Package, "not a zip");
+        await File.WriteAllTextAsync(setup.Package, "not a zip");
         var (task, engine) = setup.Task();
 
         await Assert.That(task.Execute()).IsFalse();

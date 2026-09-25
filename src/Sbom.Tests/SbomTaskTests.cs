@@ -186,6 +186,74 @@ public class SbomTaskTests
     }
 
     [Test]
+    public async Task StaleLockFileWarnsButStillWrites()
+    {
+        using var setup = new Setup();
+        var assets = setup.Temp.Write("obj/project.assets.json", "{}");
+        File.SetLastWriteTimeUtc(setup.LockFile, DateTime.UtcNow.AddHours(-1));
+        File.SetLastWriteTimeUtc(assets, DateTime.UtcNow);
+        var (task, engine) = setup.Task();
+        task.AssetsFile = assets;
+
+        await Assert.That(task.Execute()).IsTrue();
+        await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.LockFileStale);
+        using var archive = ZipFile.OpenRead(setup.Package);
+        await Assert.That(archive.GetEntry(NupkgReader.ManifestPath)).IsNotNull();
+    }
+
+    [Test]
+    public async Task FreshLockFileDoesNotWarn()
+    {
+        using var setup = new Setup();
+        var assets = setup.Temp.Write("obj/project.assets.json", "{}");
+        File.SetLastWriteTimeUtc(assets, DateTime.UtcNow.AddHours(-1));
+        File.SetLastWriteTimeUtc(setup.LockFile, DateTime.UtcNow);
+        var (task, engine) = setup.Task();
+        task.AssetsFile = assets;
+
+        await Assert.That(task.Execute()).IsTrue();
+        await Assert.That(engine.Warnings).IsEmpty();
+    }
+
+    [Test]
+    public async Task Zip64PackageIsAWarningNotAFailure()
+    {
+        using var setup = new Setup();
+        // More than 65535 entries forces .NET to write ZIP64 end records, which the appender refuses.
+        using (var stream = File.Create(setup.Package))
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
+        {
+            using (var writer = new StreamWriter(archive.CreateEntry("A.nuspec").Open()))
+            {
+                writer.Write(TestPackage.Nuspec("A", "1.0.0"));
+            }
+
+            for (var i = 0; i < ushort.MaxValue + 1; i++)
+            {
+                archive.CreateEntry($"content/{i}.txt", CompressionLevel.NoCompression);
+            }
+        }
+
+        var before = File.ReadAllBytes(setup.Package);
+        var (task, engine) = setup.Task();
+
+        await Assert.That(task.Execute()).IsTrue();
+        await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.UnsupportedLayout);
+        await Assert.That(File.ReadAllBytes(setup.Package).SequenceEqual(before)).IsTrue();
+    }
+
+    [Test]
+    public async Task CorruptPackageFailsTheBuild()
+    {
+        using var setup = new Setup();
+        File.WriteAllText(setup.Package, "not a zip");
+        var (task, engine) = setup.Task();
+
+        await Assert.That(task.Execute()).IsFalse();
+        await Assert.That(engine.Errors.Single().Code).IsEqualTo(Diagnostics.Failed);
+    }
+
+    [Test]
     public async Task EveryCodeIsDocumented()
     {
         var docs = await File.ReadAllTextAsync(Path.Combine(RepoRoot(), "docs", "DiagnosticCodes.md"));

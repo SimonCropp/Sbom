@@ -115,6 +115,78 @@ public class NupkgWriterTests
         throw new("No end record");
     }
 
+    [Test]
+    public async Task FailedWriteRestoresTheOriginalBytes()
+    {
+        using var temp = new TempDirectory();
+        var path = temp.Combine("A.1.0.0.nupkg");
+        TestPackage.Create(path, "A", "1.0.0");
+        var before = File.ReadAllBytes(path);
+
+        using var memory = new MemoryStream();
+        memory.Write(before);
+        using var failing = new FailOnceStream(memory);
+
+        await Assert.That(() => NupkgWriter.Append(failing, [new("x.txt", new byte[10_000])])).Throws<IOException>();
+        await Assert.That(memory.ToArray().SequenceEqual(before)).IsTrue();
+
+        // Still a readable package.
+        using var archive = new ZipArchive(new MemoryStream(memory.ToArray()), ZipArchiveMode.Read);
+        await Assert.That(archive.Entries.Count).IsEqualTo(4);
+    }
+
+    [Test]
+    public async Task Zip64Throws()
+    {
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            for (var i = 0; i < ushort.MaxValue + 1; i++)
+            {
+                archive.CreateEntry($"{i}.txt", CompressionLevel.NoCompression);
+            }
+        }
+
+        await Assert.That(() => NupkgWriter.Append(stream, [new("x", [1])])).Throws<UnsupportedArchiveException>();
+    }
+
+    /// <summary>
+    /// Throws on the first write, then behaves: the first write is the new tail, the second is the
+    /// rollback.
+    /// </summary>
+    sealed class FailOnceStream(Stream inner) : Stream
+    {
+        bool failed;
+        public override bool CanRead => inner.CanRead;
+        public override bool CanSeek => inner.CanSeek;
+        public override bool CanWrite => inner.CanWrite;
+        public override long Length => inner.Length;
+
+        public override long Position
+        {
+            get => inner.Position;
+            set => inner.Position = value;
+        }
+
+        public override void Flush() => inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
+        public override void SetLength(long value) => inner.SetLength(value);
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (!failed)
+            {
+                failed = true;
+                // A partial write, the realistic failure: disk full part way through.
+                inner.Write(buffer, offset, count / 2);
+                throw new IOException("Disk full");
+            }
+
+            inner.Write(buffer, offset, count);
+        }
+    }
+
     sealed class ForwardOnlyStream(Stream inner) : Stream
     {
         long position;

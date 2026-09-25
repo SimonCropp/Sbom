@@ -84,6 +84,14 @@ public class BenchmarkTests
             Directory.Delete(output, true);
         }
 
+        // Sbom skips generation when none of its inputs changed. Deleting the stamp makes it
+        // generate every time, as Microsoft.Sbom.Targets does, so the two measure the same work.
+        var stamp = Path.Combine(work, "obj", "Release", "sbom", "sbom.stamp");
+        if (File.Exists(stamp))
+        {
+            File.Delete(stamp);
+        }
+
         var info = new ProcessStartInfo("dotnet")
         {
             RedirectStandardOutput = true,
@@ -141,17 +149,14 @@ public class BenchmarkTests
             throw new($"Pack failed ({mode}):{Environment.NewLine}{log}");
         }
 
-        var sbomTarget = mode switch
+        // Every target each generator adds, so neither is charged less than it costs.
+        string[] sbomTargets = mode switch
         {
-            Mode.Microsoft => "GenerateSbomTarget",
-            Mode.Sbom => "SbomGenerate",
-            _ => null
+            Mode.Microsoft => ["GenerateSbomTarget"],
+            Mode.Sbom => ["_Sbom_AddToPackage", "_Sbom_Prepare", "SbomGenerate", "_Sbom_GetReferences"],
+            _ => []
         };
-        long sbomMs = 0;
-        if (sbomTarget != null)
-        {
-            sbomMs = TargetMilliseconds(log, sbomTarget);
-        }
+        var sbomMs = sbomTargets.Sum(_ => TargetMilliseconds(log, _));
 
         return new(stopwatch.ElapsedMilliseconds, sbomMs, peak);
     }

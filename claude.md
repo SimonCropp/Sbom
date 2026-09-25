@@ -39,6 +39,10 @@ the same pack properties NuGet writes into the nuspec.
   re-evaluates the project, 100+ ms per framework.
 - The manifest is rewritten only when its content changes, keeping the previous `created` when the
   timestamp is left to the clock; otherwise every pack would be out of date.
+- `SbomGenerate` is incremental. Its inputs are the project files, the lock and assets files, the
+  task assembly, and `inputs.txt`, which records every property passed to `SbomTask`; its output is
+  `sbom.stamp`, not the manifest, which keeps its old write time when unchanged. A new task
+  property goes into `inputs.txt` too; a test checks.
 - Output is a pure function of its inputs: ids and the namespace are content hashes, lists are
   ordinally sorted, newlines are `\n`, and no absolute path is ever written. The golden vector test
   (`u = 8fbdb3b144b7f806d6edf18901df4826`) pins the exact bytes.

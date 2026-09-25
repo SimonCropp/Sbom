@@ -34,13 +34,35 @@ public class AuthorPackTests
         await Assert.That(first.Cli.ExitCode).IsEqualTo(0).Because(first.Cli.Combined);
         var written = File.GetLastWriteTimeUtc(first.Nupkg!);
         var bytes = await File.ReadAllBytesAsync(first.Nupkg!);
+        var stamp = Path.Combine(first.WorkDirectory, "obj", "Release", "sbom", "sbom.stamp");
+        var stamped = File.GetLastWriteTimeUtc(stamp);
 
         var second = await AuthorPack.Repack(first.WorkDirectory, "Author.Basic.csproj", clean: false);
         await Assert.That(second.Cli.ExitCode).IsEqualTo(0).Because(second.Cli.Combined);
-        // No SOURCE_DATE_EPOCH: the manifest keeps its timestamp because nothing else changed, so
-        // GenerateNuspec stays up to date and the package is not written again.
+        // No input changed, so SbomGenerate is skipped, the manifest is untouched, GenerateNuspec
+        // stays up to date and the package is not written again.
+        await Assert.That(File.GetLastWriteTimeUtc(stamp)).IsEqualTo(stamped);
         await Assert.That(File.GetLastWriteTimeUtc(second.Nupkg!)).IsEqualTo(written);
         await Assert.That((await File.ReadAllBytesAsync(second.Nupkg!)).SequenceEqual(bytes)).IsTrue();
+    }
+
+    [Test]
+    public async Task ChangedPropertyRegenerates()
+    {
+        var first = await AuthorPack.Pack("Author.Basic", "Author.Basic.csproj");
+        await Assert.That(first.Cli.ExitCode).IsEqualTo(0).Because(first.Cli.Combined);
+
+        // Only a global property changes, no file; the recorded inputs still see it.
+        var second = await AuthorPack.Repack(
+            first.WorkDirectory,
+            "Author.Basic.csproj",
+            new Dictionary<string, string>
+            {
+                ["Version"] = "2.0.0"
+            });
+        await Assert.That(second.Cli.ExitCode).IsEqualTo(0).Because(second.Cli.Combined);
+        await Assert.That(second.Manifest).Contains("pkg:nuget/Author.Basic@2.0.0");
+        await Assert.That(second.Manifest).DoesNotContain("pkg:nuget/Author.Basic@1.0.0");
     }
 
     [Test]

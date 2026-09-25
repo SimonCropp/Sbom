@@ -107,8 +107,19 @@ public static class CanonicalJson
     static void WriteString(StringBuilder builder, string value)
     {
         builder.Append('"');
-        foreach (var ch in value)
+        // Almost nothing needs escaping, so unescaped runs are appended whole rather than a char at
+        // a time: a 600 KB manifest is otherwise 600,000 appends.
+        var start = 0;
+        for (var index = 0; index < value.Length; index++)
         {
+            var ch = value[index];
+            if (ch >= 0x20 && ch != '"' && ch != '\\')
+            {
+                continue;
+            }
+
+            builder.Append(value, start, index - start);
+            start = index + 1;
             switch (ch)
             {
                 case '"':
@@ -133,18 +144,13 @@ public static class CanonicalJson
                     builder.Append("\\t");
                     break;
                 default:
-                    if (ch < 0x20)
-                    {
-                        builder.Append("\\u");
-                        builder.Append(((int)ch).ToString("x4", CultureInfo.InvariantCulture));
-                        break;
-                    }
-
-                    builder.Append(ch);
+                    builder.Append("\\u");
+                    builder.Append(((int)ch).ToString("x4", CultureInfo.InvariantCulture));
                     break;
             }
         }
 
+        builder.Append(value, start, value.Length - start);
         builder.Append('"');
     }
 }

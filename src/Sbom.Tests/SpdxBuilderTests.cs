@@ -7,7 +7,7 @@ public class SpdxBuilderTests
     [Test]
     public async Task GoldenVector()
     {
-        var bytes = SpdxBuilder.Build(Golden.Input());
+        var bytes = SpdxBuilder.Build(Golden.Input(), Golden.Created);
         var json = Encoding.UTF8.GetString(bytes);
 
         // Pins the worked example byte for byte: the namespace's unique part is a hash of the whole
@@ -18,12 +18,22 @@ public class SpdxBuilderTests
 
     [Test]
     public Task Snapshot() =>
-        VerifyJson(Encoding.UTF8.GetString(SpdxBuilder.Build(Golden.Input())));
+        VerifyJson(Encoding.UTF8.GetString(SpdxBuilder.Build(Golden.Input(), Golden.Created)));
+
+    [Test]
+    public async Task OneDraftFinishesForEachTimestamp()
+    {
+        var draft = SpdxBuilder.Draft(Golden.Input());
+        var later = Golden.Created.AddDays(1);
+
+        await Assert.That(SpdxBuilder.Finish(draft, later).SequenceEqual(SpdxBuilder.Build(Golden.Input(), later))).IsTrue();
+        await Assert.That(SpdxBuilder.Finish(draft, Golden.Created).SequenceEqual(SpdxBuilder.Build(Golden.Input(), Golden.Created))).IsTrue();
+    }
 
     [Test]
     public async Task ValidatesAgainstTheOfficialSchema()
     {
-        var errors = SchemaErrors(SpdxBuilder.Build(Golden.Input()));
+        var errors = SchemaErrors(SpdxBuilder.Build(Golden.Input(), Golden.Created));
         await Assert.That(errors).IsEmpty();
     }
 
@@ -39,11 +49,10 @@ public class SpdxBuilderTests
                 Version = "1.0.0"
             },
             Dependencies = [],
-            Created = input.Created,
             ToolVersion = "1.0.0"
         };
 
-        await Assert.That(SchemaErrors(SpdxBuilder.Build(bare))).IsEmpty();
+        await Assert.That(SchemaErrors(SpdxBuilder.Build(bare, Golden.Created))).IsEmpty();
     }
 
     [Test]
@@ -60,11 +69,10 @@ public class SpdxBuilderTests
                     IsDirect = true
                 }
             ],
-            Created = input.Created,
             ToolVersion = "1.0.0"
         };
 
-        await Assert.That(SchemaErrors(SpdxBuilder.Build(withProject))).IsEmpty();
+        await Assert.That(SchemaErrors(SpdxBuilder.Build(withProject, Golden.Created))).IsEmpty();
     }
 
     [Test]
@@ -85,14 +93,14 @@ public class SpdxBuilderTests
     [Test]
     public async Task CultureDoesNotChangeOutput()
     {
-        var expected = SpdxBuilder.Build(Golden.Input());
+        var expected = SpdxBuilder.Build(Golden.Input(), Golden.Created);
         var original = CultureInfo.CurrentCulture;
         try
         {
             foreach (var culture in new[] { "tr-TR", "de-DE", "ar-SA" })
             {
                 CultureInfo.CurrentCulture = new(culture);
-                await Assert.That(SpdxBuilder.Build(Golden.Input()).SequenceEqual(expected)).IsTrue();
+                await Assert.That(SpdxBuilder.Build(Golden.Input(), Golden.Created).SequenceEqual(expected)).IsTrue();
             }
         }
         finally
@@ -104,17 +112,16 @@ public class SpdxBuilderTests
     [Test]
     public async Task DependencyOrderDoesNotChangeOutput()
     {
-        var expected = SpdxBuilder.Build(Golden.Input());
+        var expected = SpdxBuilder.Build(Golden.Input(), Golden.Created);
         var input = Golden.Input();
         var reversed = new SbomInput
         {
             Root = input.Root,
             Dependencies = input.Dependencies.Reverse().ToList(),
-            Created = input.Created,
             ToolVersion = input.ToolVersion
         };
 
-        await Assert.That(SpdxBuilder.Build(reversed).SequenceEqual(expected)).IsTrue();
+        await Assert.That(SpdxBuilder.Build(reversed, Golden.Created).SequenceEqual(expected)).IsTrue();
     }
 
     static readonly Lazy<JsonSchema> schema = new(() =>

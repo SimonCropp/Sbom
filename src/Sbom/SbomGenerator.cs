@@ -40,8 +40,7 @@ public sealed class SbomResult
 
 public static class SbomGenerator
 {
-    public const string PackageDirectory = "_manifest/spdx_3.0/";
-    public const string PackagePath = PackageDirectory + "manifest.spdx.json";
+    public const string PackagePath = "_manifest/spdx_3.0/manifest.spdx.json";
 
     public static SbomResult Run(SbomRequest request)
     {
@@ -102,16 +101,15 @@ public static class SbomGenerator
 
         var dependencies = BuildDependencies(request, hasLockFile, diagnostics);
 
-        SbomInput Input(DateTimeOffset created) =>
+        var draft = SpdxBuilder.Draft(
             new()
             {
                 Root = root,
                 Supplier = Clean(request.Supplier),
                 Dependencies = dependencies,
-                Created = created,
                 NamespaceBaseUri = Clean(request.NamespaceBaseUri),
                 ToolVersion = request.ToolVersion
-            };
+            });
 
         var manifestFile = request.ManifestFile;
         var sidecarFile = manifestFile + ".sha256";
@@ -121,12 +119,15 @@ public static class SbomGenerator
             existing = File.ReadAllBytes(manifestFile);
         }
 
-        var manifest = Build(request, existing, Input);
-        var sidecar = Encoding.ASCII.GetBytes(Hashing.Sha256Hex(manifest));
+        var manifest = Finish(request, draft, existing);
+        if (manifest != existing)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(manifestFile)!);
+            File.WriteAllBytes(manifestFile, manifest);
+            result.Written = true;
+        }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(manifestFile)!);
-        result.Written = WriteIfChanged(manifestFile, manifest, existing);
-        WriteIfChanged(sidecarFile, sidecar, null);
+        WriteIfChanged(sidecarFile, Encoding.ASCII.GetBytes(Hashing.Sha256Hex(manifest)));
 
         result.Files.Add(manifestFile);
         result.Files.Add(sidecarFile);
@@ -139,43 +140,67 @@ public static class SbomGenerator
     /// Pack's up-to-date check compares the manifest's write time with the package's, so a manifest
     /// is only rewritten when it says something new. Left to the clock, "created" would differ on
     /// every pack; so when the previous manifest matches in everything else, its timestamp is kept.
+    /// Returns <paramref name="existing"/> itself when it already has the right bytes.
     /// </summary>
-    static byte[] Build(SbomRequest request, byte[]? existing, Func<DateTimeOffset, SbomInput> input)
+    static byte[] Finish(SbomRequest request, SpdxDraft draft, byte[]? existing)
     {
         var requested = Timestamps.Explicit(request.DeterministicTimestamp, request.SourceDateEpoch);
         if (requested != null)
         {
-            return SpdxBuilder.Build(input(requested.Value));
+            var manifest = SpdxBuilder.Finish(draft, requested.Value);
+            if (existing != null &&
+                Same(manifest, existing))
+            {
+                return existing;
+            }
+
+            return manifest;
         }
 
+        // Creation info is the first element of the graph, so its timestamp is near the start.
         if (existing != null &&
-            Timestamps.ReadCreated(Encoding.UTF8.GetString(existing)) is { } previous)
+            Timestamps.ReadCreated(Encoding.UTF8.GetString(existing, 0, Math.Min(existing.Length, 1024))) is { } previous)
         {
-            var candidate = SpdxBuilder.Build(input(previous));
-            if (candidate.SequenceEqual(existing))
+            var candidate = SpdxBuilder.Finish(draft, previous);
+            if (Same(candidate, existing))
             {
-                return candidate;
+                return existing;
             }
         }
 
-        return SpdxBuilder.Build(input(Timestamps.Resolve(null, null, request.Now)));
+        return SpdxBuilder.Finish(draft, Timestamps.Resolve(null, null, request.Now));
     }
 
-    static bool WriteIfChanged(string path, byte[] content, byte[]? existing)
+    static void WriteIfChanged(string path, byte[] content)
     {
-        if (existing == null &&
-            File.Exists(path))
+        if (File.Exists(path) &&
+            Same(File.ReadAllBytes(path), content))
         {
-            existing = File.ReadAllBytes(path);
+            return;
         }
 
-        if (existing != null &&
-            existing.SequenceEqual(content))
+        File.WriteAllBytes(path, content);
+    }
+
+    /// <summary>
+    /// A plain loop: on .NET Framework, Enumerable.SequenceEqual enumerates a byte[] one boxed
+    /// comparison at a time.
+    /// </summary>
+    static bool Same(byte[] left, byte[] right)
+    {
+        if (left.Length != right.Length)
         {
             return false;
         }
 
-        File.WriteAllBytes(path, content);
+        for (var index = 0; index < left.Length; index++)
+        {
+            if (left[index] != right[index])
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 

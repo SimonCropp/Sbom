@@ -4,6 +4,8 @@
 /// </summary>
 static class Golden
 {
+    public static readonly DateTimeOffset Created = DateTimeOffset.FromUnixTimeSeconds(1767225600);
+
     public static SbomInput Input() =>
         new()
         {
@@ -47,7 +49,6 @@ static class Golden
                     }
                 }
             ],
-            Created = DateTimeOffset.FromUnixTimeSeconds(1767225600),
             ToolVersion = "1.0.0"
         };
 }

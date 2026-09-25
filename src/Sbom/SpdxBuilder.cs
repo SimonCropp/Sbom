@@ -14,19 +14,39 @@ public static class SpdxBuilder
 
     const string contentHashComment = "NuGet contentHash: SHA-512 of the .nupkg excluding its .signature.p7s entry";
 
-    public static byte[] Build(SbomInput input)
+    // Same length as a real timestamp. Canonical JSON escapes every quote inside a value, so this
+    // exact text can only be the creation info's own property.
+    const string createdPlaceholder = "0000-00-00T00:00:00Z";
+    const string createdToken = "\"created\": \"" + createdPlaceholder + "\"";
+
+    public static byte[] Build(SbomInput input, DateTimeOffset created) =>
+        Finish(Draft(input), created);
+
+    /// <summary>
+    /// The document serialized with placeholders for the timestamp and the namespace's unique part,
+    /// the only two parts that depend on the timestamp. Finishing it once per candidate timestamp
+    /// is far cheaper than serializing again.
+    /// </summary>
+    public static SpdxDraft Draft(SbomInput input)
     {
         var root = input.Root;
         var id = root.Id ?? "";
         var version = root.Version ?? "";
         var prefix = NamespacePrefix(input.NamespaceBaseUri, id, PurlVersion(version));
+        return new(CanonicalJson.Write(BuildGraph(input, prefix + zeros)), prefix);
+    }
 
-        // Serialize once with a zeroed unique part, hash that, then substitute. The placeholder has
-        // the same length and every IRI shares the prefix, so layout and ordering do not move.
-        var draft = CanonicalJson.Write(BuildGraph(input, prefix + zeros));
-        var unique = Hashing.Sha256Hex(draft)[..32];
-        var final = draft.Replace(prefix + zeros + "#", prefix + unique + "#");
-        return Encoding.UTF8.GetBytes(final);
+    /// <summary>
+    /// Sets the timestamp, hashes the result, then substitutes the hash for the zeroed unique part.
+    /// Both placeholders have the length of what replaces them, and every IRI shares the prefix, so
+    /// layout and ordering do not move.
+    /// </summary>
+    public static byte[] Finish(SpdxDraft draft, DateTimeOffset created)
+    {
+        var text = draft.Text.Replace(createdToken, $"\"created\": \"{Timestamps.Format(created)}\"");
+        var unique = Hashing.Sha256Hex(text)[..32];
+        text = text.Replace(draft.Prefix + zeros + "#", draft.Prefix + unique + "#");
+        return Encoding.UTF8.GetBytes(text);
     }
 
     static string NamespacePrefix(string? baseUri, string id, string version)
@@ -308,7 +328,7 @@ public static class SpdxBuilder
             .Set("@id", creationInfo)
             .Set("type", "CreationInfo")
             .Set("specVersion", "3.0.1")
-            .Set("created", Timestamps.Format(input.Created))
+            .Set("created", createdPlaceholder)
             .Set("createdBy", new List<object> { builder.Iri(createdBy) })
             .Set("createdUsing", new List<object> { builder.Iri("tool") });
 
@@ -439,4 +459,10 @@ public static class SpdxBuilder
 
         return builder.ToString();
     }
+}
+
+public sealed class SpdxDraft(string text, string prefix)
+{
+    internal string Text { get; } = text;
+    internal string Prefix { get; } = prefix;
 }

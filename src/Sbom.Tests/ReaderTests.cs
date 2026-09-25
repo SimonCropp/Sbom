@@ -133,5 +133,11 @@ public class ReaderTests
         await Assert.That(Sbom.Timestamps.ReadCreated("{\n  \"created\": \"2026-01-01T00:00:00Z\",\n}")).IsEqualTo(DateTimeOffset.FromUnixTimeSeconds(1767225600));
         await Assert.That(Sbom.Timestamps.ReadCreated("{\"created\": \"yesterday\"}")).IsNull();
         await Assert.That(Sbom.Timestamps.ReadCreated("{}")).IsNull();
+        await Assert.That(Sbom.Timestamps.ReadCreated("{\"created\": \"2026-13-01T00:00:00Z\"}")).IsNull();
+        await Assert.That(Sbom.Timestamps.ReadCreated("{\"created\": \"2026-01-01T00:00:00\"}")).IsNull();
+        await Assert.That(Sbom.Timestamps.ReadCreated("{\"created\": \"2026-01")).IsNull();
+        await Assert.That(Sbom.Timestamps.Format(new(999, 1, 2, 3, 4, 5, TimeSpan.FromHours(10)))).IsEqualTo("0999-01-01T17:04:05Z");
+        var odd = new DateTimeOffset(2031, 12, 30, 23, 59, 58, TimeSpan.Zero);
+        await Assert.That(Sbom.Timestamps.ReadCreated($"{{\"created\": \"{Sbom.Timestamps.Format(odd)}\"}}")).IsEqualTo(odd);
     }
 }

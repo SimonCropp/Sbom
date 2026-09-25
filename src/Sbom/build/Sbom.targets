@@ -24,15 +24,27 @@
     packages such as ProjectDefaults set Authors and license in a BeforeTargets="GenerateNuspec" target
     of their own. Those are imported from build/*.props, ahead of this file, so they run first.
 
-    It also runs when GenerateNuspec turns out to be up to date. The task then rebuilds an identical
-    manifest, leaves the file untouched, and the package stays up to date.
+    SbomGenerate itself is incremental, and this target adds the manifest to the package whether it
+    ran or not.
   -->
-  <Target Name="SbomGenerate"
+  <Target Name="_Sbom_AddToPackage"
           BeforeTargets="GenerateNuspec"
+          DependsOnTargets="_Sbom_Prepare;SbomGenerate"
           Condition="'$(IsPackable)' == 'true' and
                      '$(PackageReferenceCompatibleProjectStyle)' == 'true' and
                      '$(DesignTimeBuild)' != 'true' and
                      '$(NCrunch)' != '1'">
+    <!-- _PackageFiles is what PackTask packs; NuGetPackInput is what decides whether GenerateNuspec
+         is up to date, and was computed before this target ran. A NuspecFile pack ignores
+         _PackageFiles, and the task has said so (Sbom010). -->
+    <ItemGroup Condition="'$(_Sbom_Enabled)' == 'true' and '$(NuspecFile)' == '' and Exists('$(_Sbom_ManifestFile)')">
+      <_Sbom_PackageFile Include="$(_Sbom_ManifestFile);$(_Sbom_ManifestFile).sha256" PackagePath="_manifest/spdx_3.0/" />
+      <_PackageFiles Include="@(_Sbom_PackageFile)" />
+      <NuGetPackInput Include="@(_Sbom_PackageFile)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="_Sbom_Prepare">
     <PropertyGroup>
       <_Sbom_Enabled>$(SbomEnabled)</_Sbom_Enabled>
       <!-- GenerateSBOM is Microsoft.Sbom.Targets' switch. A 'false' there is honoured only when that
@@ -55,27 +67,79 @@
 
       <!-- NuspecOutputPath is where NuGet writes the intermediate nuspec, obj/{Configuration}/ by
            default, and is defined in both the outer and inner builds. -->
-      <_Sbom_ManifestFile>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(NuspecOutputPath)', 'sbom', 'manifest.spdx.json'))</_Sbom_ManifestFile>
+      <_Sbom_Directory>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(NuspecOutputPath)', 'sbom'))</_Sbom_Directory>
+      <_Sbom_ManifestFile>$(_Sbom_Directory)manifest.spdx.json</_Sbom_ManifestFile>
+      <_Sbom_PropertiesFile>$(_Sbom_Directory)inputs.txt</_Sbom_PropertiesFile>
+      <_Sbom_StampFile>$(_Sbom_Directory)sbom.stamp</_Sbom_StampFile>
     </PropertyGroup>
 
+    <!-- Every property the SBOM depends on, rewritten only when one changes, so that it can stand
+         in for them as an input: a -p:Version=... on the command line changes no file. -->
+    <WriteLinesToFile Condition="'$(_Sbom_Enabled)' == 'true'"
+                      File="$(_Sbom_PropertiesFile)"
+                      Lines="PackageId=$(PackageId);
+                             PackageVersion=$(PackageVersion);
+                             Authors=$(Authors);
+                             PackageLicenseExpression=$(PackageLicenseExpression);
+                             PackageLicenseUrl=$(PackageLicenseUrl);
+                             PackageProjectUrl=$(PackageProjectUrl);
+                             Copyright=$(Copyright);
+                             RepositoryUrl=$(RepositoryUrl);
+                             RepositoryCommit=$(RepositoryCommit);
+                             PackageType=$(PackageType);
+                             NuspecFile=$(NuspecFile);
+                             TargetFrameworks=$(TargetFrameworks);
+                             TargetFramework=$(TargetFramework);
+                             LockFile=$(_Sbom_LockFile);
+                             AssetsFile=$(_Sbom_AssetsFile);
+                             NuGetPackageRoot=$(NuGetPackageRoot);
+                             SbomSupplier=$(SbomSupplier);
+                             SbomNamespaceBaseUri=$(SbomNamespaceBaseUri);
+                             DeterministicTimestamp=$(DeterministicTimestamp);
+                             SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH);
+                             MicrosoftSbomActive=$(_Sbom_MicrosoftSbomActive)"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+
+    <!-- A manifest deleted by hand is regenerated. -->
+    <Delete Condition="!Exists('$(_Sbom_ManifestFile)')" Files="$(_Sbom_StampFile)" />
+
+    <ItemGroup Condition="'$(_Sbom_Enabled)' == 'true'">
+      <!-- MSBuildAllProjects holds the newest imported project file: the project itself,
+           Directory.Packages.props, and the rest. PrivateAssets and versions live there. -->
+      <_Sbom_Input Include="$(MSBuildAllProjects);$(_Sbom_Assembly);$(_Sbom_PropertiesFile)" />
+      <_Sbom_Input Include="$(_Sbom_LockFile)" Condition="Exists('$(_Sbom_LockFile)')" />
+      <_Sbom_Input Include="$(_Sbom_AssetsFile)" Condition="'$(_Sbom_AssetsFile)' != '' and Exists('$(_Sbom_AssetsFile)')" />
+      <FileWrites Include="$(_Sbom_ManifestFile);$(_Sbom_ManifestFile).sha256;$(_Sbom_PropertiesFile);$(_Sbom_StampFile)" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Skipped when no input is newer than the stamp, which is what makes a build that repacks
+    (GeneratePackageOnBuild) cost nothing here. The stamp, not the manifest, is the output: the
+    manifest keeps its old write time when its content is unchanged, so that the package stays up to
+    date, and as an output that would make this target run every time.
+  -->
+  <Target Name="SbomGenerate"
+          Condition="'$(_Sbom_Enabled)' == 'true'"
+          Inputs="@(_Sbom_Input)"
+          Outputs="$(_Sbom_StampFile)">
     <!-- The lock file records no PrivateAssets, so the references come from each framework's own
          build. A project instance is keyed by its global properties, and one with any other set is
          evaluated again from scratch (100+ ms each), so these are exactly the instances the build
          already has: TargetFramework alone for each inner build of a multi-targeted project, and
          the current instance for a single-targeted one. -->
-    <ItemGroup Condition="'$(_Sbom_Enabled)' == 'true'">
+    <ItemGroup>
       <_Sbom_Project Condition="'$(TargetFrameworks)' != ''" Include="$(MSBuildProjectFullPath)" AdditionalProperties="TargetFramework=%(_TargetFrameworks.Identity)" />
       <_Sbom_Project Condition="'$(TargetFrameworks)' == ''" Include="$(MSBuildProjectFullPath)" />
     </ItemGroup>
-    <MSBuild Condition="'$(_Sbom_Enabled)' == 'true'"
-             Projects="@(_Sbom_Project)"
+    <MSBuild Projects="@(_Sbom_Project)"
              Targets="_Sbom_GetReferences"
              BuildInParallel="$(BuildInParallel)">
       <Output TaskParameter="TargetOutputs" ItemName="_Sbom_Reference" />
     </MSBuild>
 
-    <SbomTask Condition="'$(_Sbom_Enabled)' == 'true'"
-              ManifestFile="$(_Sbom_ManifestFile)"
+    <SbomTask ManifestFile="$(_Sbom_ManifestFile)"
               NuspecFile="$(NuspecFile)"
               PackageId="$(PackageId)"
               PackageVersion="$(PackageVersion)"
@@ -95,16 +159,9 @@
               NamespaceBaseUri="$(SbomNamespaceBaseUri)"
               DeterministicTimestamp="$(DeterministicTimestamp)"
               SourceDateEpoch="$(SOURCE_DATE_EPOCH)"
-              MicrosoftSbomActive="$(_Sbom_MicrosoftSbomActive)">
-      <Output TaskParameter="PackageFiles" ItemName="_Sbom_PackageFile" />
-    </SbomTask>
+              MicrosoftSbomActive="$(_Sbom_MicrosoftSbomActive)" />
 
-    <!-- _PackageFiles is what PackTask packs; NuGetPackInput is what decides whether GenerateNuspec
-         is up to date, and was computed before this target ran. -->
-    <ItemGroup>
-      <_PackageFiles Include="@(_Sbom_PackageFile)" />
-      <NuGetPackInput Include="@(_Sbom_PackageFile)" />
-    </ItemGroup>
+    <Touch Files="$(_Sbom_StampFile)" AlwaysCreate="true" />
   </Target>
 
   <!-- Called per target framework. Project references are keyed by file name, which is how the

@@ -88,8 +88,6 @@ public class SbomTaskTests
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings).IsEmpty();
 
-        await Assert.That(task.PackageFiles.Select(_ => _.ItemSpec)).IsEquivalentTo([setup.Manifest, setup.Sidecar]);
-        await Assert.That(task.PackageFiles.All(_ => _.GetMetadata("PackagePath") == "_manifest/spdx_3.0/")).IsTrue();
 
         var manifest = await File.ReadAllBytesAsync(setup.Manifest);
         await Assert.That(await File.ReadAllTextAsync(setup.Sidecar)).IsEqualTo(Hashing.Sha256Hex(manifest));
@@ -149,7 +147,6 @@ public class SbomTaskTests
         await Assert.That((await File.ReadAllBytesAsync(setup.Manifest)).SequenceEqual(bytes)).IsTrue();
         await Assert.That(File.GetLastWriteTimeUtc(setup.Manifest)).IsEqualTo(old);
         await Assert.That(File.GetLastWriteTimeUtc(setup.Sidecar)).IsEqualTo(old);
-        await Assert.That(task.PackageFiles.Length).IsEqualTo(2);
         await Assert.That(engine.Messages.Any(_ => _.Message!.Contains("unchanged"))).IsTrue();
     }
 
@@ -189,7 +186,7 @@ public class SbomTaskTests
 
         await Assert.That(task.Execute()).IsFalse();
         await Assert.That(engine.Errors.Single().Code).IsEqualTo(Diagnostics.LockFileMissing);
-        await Assert.That(task.PackageFiles).IsEmpty();
+        await Assert.That(File.Exists(setup.Manifest)).IsFalse();
     }
 
     [Test]
@@ -293,7 +290,6 @@ public class SbomTaskTests
 
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings.Single().Code).IsEqualTo(Diagnostics.NuspecFileNotSupported);
-        await Assert.That(task.PackageFiles).IsEmpty();
         await Assert.That(File.Exists(setup.Manifest)).IsFalse();
     }
 
@@ -389,6 +385,29 @@ public class SbomTaskTests
             .ToList();
         await Assert.That(attributes.SetEquals(properties.Where(_ => !IsOutput(_)).Select(_ => _.Name))).IsTrue();
         await Assert.That(outputs.SetEquals(properties.Where(IsOutput).Select(_ => _.Name))).IsTrue();
+    }
+
+    [Test]
+    public async Task EveryPropertyTheTaskReadsIsAnIncrementalInput()
+    {
+        // SbomGenerate is skipped when no input changed. A property passed to the task but missing
+        // from the recorded inputs could change without the SBOM being regenerated.
+        var targets = System.Xml.Linq.XDocument.Load(Path.Combine(RepoRoot(), "src", "Sbom", "build", "Sbom.targets"));
+        var lines = targets.Descendants()
+            .Single(_ => _.Name.LocalName == "WriteLinesToFile")
+            .Attribute("Lines")!
+            .Value;
+        var properties = targets.Descendants()
+            .Single(_ => _.Name.LocalName == "SbomTask")
+            .Attributes()
+            .Select(_ => _.Value)
+            .Where(_ => _.StartsWith("$(", StringComparison.Ordinal) && _ != "$(_Sbom_ManifestFile)")
+            .ToList();
+        await Assert.That(properties).IsNotEmpty();
+        foreach (var property in properties)
+        {
+            await Assert.That(lines).Contains(property);
+        }
     }
 
     static bool IsOutput(PropertyInfo property) =>

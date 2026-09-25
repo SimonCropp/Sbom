@@ -1,9 +1,8 @@
 using Task = Microsoft.Build.Utilities.Task;
-using TaskItem = Microsoft.Build.Utilities.TaskItem;
 
 /// <summary>
-/// Writes an SPDX 3.0.1 SBOM for the package about to be packed, and returns it as package files
-/// for NuGet to include. In the global namespace so Sbom.targets can name it unqualified.
+/// Writes an SPDX 3.0.1 SBOM for the package about to be packed, which Sbom.targets then hands to
+/// NuGet as package files. In the global namespace so Sbom.targets can name it unqualified.
 /// </summary>
 public class SbomTask : Task
 {
@@ -28,12 +27,6 @@ public class SbomTask : Task
     public string DeterministicTimestamp { get; set; } = "";
     public string SourceDateEpoch { get; set; } = "";
     public string MicrosoftSbomActive { get; set; } = "";
-
-    /// <summary>
-    /// The manifest and its sidecar, with PackagePath set, when there is an SBOM to pack.
-    /// </summary>
-    [Output]
-    public ITaskItem[] PackageFiles { get; set; } = [];
 
     public override bool Execute()
     {
@@ -69,14 +62,6 @@ public class SbomTask : Task
                 return !Log.HasLoggedErrors;
             }
 
-            PackageFiles = result.Files
-                .Select(ITaskItem (_) => new TaskItem(
-                    _,
-                    new Dictionary<string, string>
-                    {
-                        ["PackagePath"] = SbomGenerator.PackageDirectory
-                    }))
-                .ToArray();
             var state = "unchanged";
             if (result.Written)
             {

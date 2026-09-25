@@ -41,6 +41,13 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # The integration fixtures pack under IntegrationTests/global.json's SDK, which the runner
+      # image does not necessarily have.
+      - name: Install the integration test SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: IntegrationTests/global.json
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:

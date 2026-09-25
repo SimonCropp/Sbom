@@ -65,10 +65,11 @@ public class AuthorPackTests
             ["SOURCE_DATE_EPOCH"] = "1767225600"
         };
         var first = await AuthorPack.Pack("Author.Basic", "Author.Basic.csproj", properties);
+        await Assert.That(first.Cli.ExitCode).IsEqualTo(0).Because(first.Cli.Combined);
         var firstManifest = first.Manifest;
         // Same directory, so the compiled assembly is identical and only Sbom's output is compared.
         var second = await AuthorPack.Repack(first.WorkDirectory, "Author.Basic.csproj", properties);
-        await Assert.That(first.Cli.ExitCode).IsEqualTo(0).Because(first.Cli.Combined);
+        await Assert.That(second.Cli.ExitCode).IsEqualTo(0).Because(second.Cli.Combined);
         await Assert.That(second.Manifest).IsEqualTo(firstManifest);
         await Assert.That(firstManifest).Contains("\"created\": \"2026-01-01T00:00:00Z\"");
     }

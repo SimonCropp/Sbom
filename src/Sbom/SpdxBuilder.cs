@@ -7,8 +7,8 @@ namespace Sbom;
 /// </summary>
 public static class SpdxBuilder
 {
-    public const string Context = "https://spdx.org/rdf/3.0.1/spdx-context.jsonld";
-    public const string DefaultNamespaceBase = "https://spdx.org/spdxdocs/";
+    const string context = "https://spdx.org/rdf/3.0.1/spdx-context.jsonld";
+    const string defaultNamespaceBase = "https://spdx.org/spdxdocs/";
     const string creationInfo = "_:creationinfo";
     const string zeros = "00000000000000000000000000000000";
 
@@ -34,7 +34,7 @@ public static class SpdxBuilder
         var value = baseUri?.Trim();
         if (string.IsNullOrEmpty(value))
         {
-            value = DefaultNamespaceBase;
+            value = defaultNamespaceBase;
         }
 
         if (!value!.EndsWith("/", StringComparison.Ordinal))
@@ -322,7 +322,7 @@ public static class SpdxBuilder
         graph.AddRange(relationshipElements.Select(object (_) => _.Body));
 
         return new JsonObject()
-            .Set("@context", Context)
+            .Set("@context", context)
             .Set("@graph", graph);
     }
 

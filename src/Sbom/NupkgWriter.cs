@@ -1,5 +1,3 @@
-using System.IO.Compression;
-
 namespace Sbom;
 
 public sealed record NewEntry(string Name, byte[] Content);

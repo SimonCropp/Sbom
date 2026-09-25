@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-
 namespace Sbom;
 
 public static class Hashing
@@ -38,7 +36,7 @@ public static class Hashing
     /// First 8 bytes of SHA-256, as 16 lowercase hex characters. Used for element ids.
     /// </summary>
     public static string ShortHash(string key) =>
-        Sha256Hex(key).Substring(0, 16);
+        Sha256Hex(key)[..16];
 
     public static string? Base64ToHex(string? base64)
     {

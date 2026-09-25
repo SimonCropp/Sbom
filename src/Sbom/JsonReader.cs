@@ -8,7 +8,7 @@ namespace Sbom;
 /// </summary>
 public sealed class JsonReader
 {
-    readonly string text;
+    string text;
     int position;
 
     JsonReader(string text) =>

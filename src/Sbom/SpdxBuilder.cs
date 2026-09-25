@@ -24,7 +24,7 @@ public static class SpdxBuilder
         // Serialize once with a zeroed unique part, hash that, then substitute. The placeholder has
         // the same length and every IRI shares the prefix, so layout and ordering do not move.
         var draft = CanonicalJson.Write(BuildGraph(input, prefix + zeros));
-        var unique = Hashing.Sha256Hex(draft).Substring(0, 32);
+        var unique = Hashing.Sha256Hex(draft)[..32];
         var final = draft.Replace(prefix + zeros + "#", prefix + unique + "#");
         return Encoding.UTF8.GetBytes(final);
     }

@@ -118,7 +118,7 @@ public static class CanonicalJson
                     builder.Append("\\\"");
                     break;
                 case '\\':
-                    builder.Append("\\\\");
+                    builder.Append(@"\\");
                     break;
                 case '\b':
                     builder.Append("\\b");

@@ -69,11 +69,3 @@ message carries the exception. The build fails because it asked for an SBOM and 
 The project sets `NuspecFile`, so NuGet packs the files listed in that nuspec and ignores the package
 files MSBuild supplies, the SBOM among them. No SBOM is written. Pack from project properties
 instead, or skip Sbom for this project with `SbomEnabled=false`.
-
-
-## Retired codes
-
-Sbom002 (package not found), Sbom003 (package is signed), Sbom007 (package layout not supported) and
-Sbom009 (SBOM already present) were raised by versions before 0.3.0, which appended the SBOM to the
-packed nupkg. Since 0.3.0 the SBOM is handed to NuGet as one more package file, so none of those
-situations can arise. Codes are not reused.

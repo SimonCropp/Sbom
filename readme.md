@@ -167,6 +167,3 @@ other entry.
 | [Sbom006](/docs/DiagnosticCodes.md#sbom006) | Microsoft.Sbom.Targets also generates an SBOM | Warning |
 | [Sbom008](/docs/DiagnosticCodes.md#sbom008) | SBOM generation failed | Error |
 | [Sbom010](/docs/DiagnosticCodes.md#sbom010) | NuspecFile packs not supported | Warning |
-
-Sbom002, Sbom003, Sbom007 and Sbom009 were retired in 0.3.0; see
-[retired codes](/docs/DiagnosticCodes.md#retired-codes).

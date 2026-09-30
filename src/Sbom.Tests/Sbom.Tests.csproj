@@ -16,7 +16,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Verify" />
     <PackageReference Include="Verify.TUnit" />
-    <PackageReference Include="Verify.DiffPlex" />
     <PackageReference Include="DiffEngine" />
     <!-- Regenerates readme.md and docs/*.md on every build of this project, and with
          ValidateContent fails the build when a snippet has drifted from its source. -->

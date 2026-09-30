@@ -150,7 +150,7 @@ public class SbomTask : Task
         var plus = version.IndexOf('+');
         if (plus >= 0)
         {
-            return version.Substring(0, plus);
+            return version[..plus];
         }
 
         return version;

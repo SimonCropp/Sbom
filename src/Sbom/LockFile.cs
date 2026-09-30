@@ -13,7 +13,7 @@ public sealed class LockedDependency(string id, string? version, DependencyKind 
     public DependencyKind Kind { get; } = kind;
     public string? ContentHashHex { get; set; }
     public bool IsDirect { get; set; }
-    public SortedSet<string> DependsOn { get; } = new(StringComparer.Ordinal);
+    public SortedSet<string> DependsOn { get; } = [with(StringComparer.Ordinal)];
 
     public string Key => MakeKey(Id, Version);
 

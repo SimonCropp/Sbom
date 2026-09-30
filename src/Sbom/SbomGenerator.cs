@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Sbom;
 
 public sealed record ReferenceInfo(string Id, bool IsPrivate);

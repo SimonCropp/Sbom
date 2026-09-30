@@ -1,3 +1,4 @@
+using System.Reflection;
 using Task = Microsoft.Build.Utilities.Task;
 
 /// <summary>

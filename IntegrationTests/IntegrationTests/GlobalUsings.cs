@@ -15,4 +15,3 @@ global using System.Threading;
 global using System.Threading.Tasks;
 global using Json.Schema;
 global using TUnit.Core;
-global using VerifyTests.DiffPlex;

@@ -40,7 +40,6 @@ public class SpdxBuilderTests
     [Test]
     public async Task NoDependenciesDocumentValidates()
     {
-        var input = Golden.Input();
         var bare = new SbomInput
         {
             Root = new()

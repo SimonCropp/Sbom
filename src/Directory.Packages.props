@@ -10,7 +10,7 @@
     <PackageVersion Include="Microsoft.Build.Framework" Version="18.9.6" Pinned="true" />
     <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="18.9.6" Pinned="true" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
-    <PackageVersion Include="Polyfill" Version="11.4.3" />
+    <PackageVersion Include="Polyfill" Version="11.4.2" />
     <PackageVersion Include="ProjectDefaults" Version="1.0.182" />
     <PackageVersion Include="TUnit" Version="1.72.16" />
     <PackageVersion Include="Verify" Version="33.3.0" />

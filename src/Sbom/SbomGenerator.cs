@@ -221,13 +221,16 @@ public static class SbomGenerator
         var privacy = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var reference in request.References)
         {
-            if (privacy.TryGetValue(reference.Id, out var existing))
-            {
-                privacy[reference.Id] = existing && reference.IsPrivate;
-                continue;
-            }
+            var id = reference.Id;
 
-            privacy[reference.Id] = reference.IsPrivate;
+            if (privacy.TryGetValue(id, out var existing))
+            {
+                privacy[id] = existing && reference.IsPrivate;
+            }
+            else
+            {
+                privacy[id] = reference.IsPrivate;
+            }
         }
 
         // Opening each nuspec dominates generation (file-open latency, not parsing), so they are read
@@ -239,7 +242,11 @@ public static class SbomGenerator
             index =>
             {
                 var entry = locked[index];
-                if (entry is {Kind: DependencyKind.Package, Version: not null})
+                if (entry is
+                    {
+                        Kind: DependencyKind.Package,
+                        Version: not null
+                    })
                 {
                     metadata[index] = ReadMetadata(request.PackageRoot, entry.Id, entry.Version);
                 }
@@ -262,7 +269,11 @@ public static class SbomGenerator
                 dependency.IsBuildOnly = isPrivate;
             }
 
-            if (entry is {Kind: DependencyKind.Package, Version: not null})
+            if (entry is
+                {
+                    Kind: DependencyKind.Package,
+                    Version: not null
+                })
             {
                 dependency.Metadata = metadata[index];
                 if (dependency.Metadata == null)

@@ -309,9 +309,9 @@ public static class SpdxBuilder
             .Set("type", "software_Sbom")
             .Set("creationInfo", creationInfo)
             .Set("name", name)
-            .Set("software_sbomType", new List<object> { "build" })
+            .Set("software_sbomType", new List<object> {"build"})
             .Set("profileConformance", profiles)
-            .Set("rootElement", new List<object> { builder.Iri(rootLocal) })
+            .Set("rootElement", new List<object> {builder.Iri(rootLocal)})
             .Set("element", memberLocals.Select(object (_) => builder.Iri(_)).ToList());
 
         var document = new JsonObject()
@@ -321,16 +321,16 @@ public static class SpdxBuilder
             .Set("name", name)
             .Set("dataLicense", builder.Iri(dataLicense))
             .Set("profileConformance", profiles)
-            .Set("rootElement", new List<object> { builder.Iri(sbomLocal) })
-            .Set("element", new[] { sbomLocal }.Concat(memberLocals).Select(object (_) => builder.Iri(_)).ToList());
+            .Set("rootElement", new List<object> {builder.Iri(sbomLocal)})
+            .Set("element", new[] {sbomLocal}.Concat(memberLocals).Select(object (_) => builder.Iri(_)).ToList());
 
         var creation = new JsonObject()
             .Set("@id", creationInfo)
             .Set("type", "CreationInfo")
             .Set("specVersion", "3.0.1")
             .Set("created", createdPlaceholder)
-            .Set("createdBy", new List<object> { builder.Iri(createdBy) })
-            .Set("createdUsing", new List<object> { builder.Iri("tool") });
+            .Set("createdBy", new List<object> {builder.Iri(createdBy)})
+            .Set("createdUsing", new List<object> {builder.Iri("tool")});
 
         var graph = new List<object>
         {
@@ -371,13 +371,15 @@ public static class SpdxBuilder
 
         if (metadata.RepositoryUrl != null)
         {
-            body.Set("externalRef", new List<object>
-            {
-                new JsonObject()
-                    .Set("type", "ExternalRef")
-                    .Set("externalRefType", "vcs")
-                    .Set("locator", new List<object> { metadata.RepositoryUrl })
-            });
+            body.Set(
+                "externalRef",
+                new List<object>
+                {
+                    new JsonObject()
+                        .Set("type", "ExternalRef")
+                        .Set("externalRefType", "vcs")
+                        .Set("locator", new List<object> {metadata.RepositoryUrl})
+                });
         }
 
         if (metadata.RepositoryCommit != null)
@@ -435,7 +437,7 @@ public static class SpdxBuilder
         var plus = version.IndexOf('+');
         if (plus >= 0)
         {
-            return version.Substring(0, plus);
+            return version[..plus];
         }
 
         return version;
@@ -446,7 +448,7 @@ public static class SpdxBuilder
         var builder = new StringBuilder();
         foreach (var b in Encoding.UTF8.GetBytes(value))
         {
-            var ch = (char)b;
+            var ch = (char) b;
             if (ch is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '-' or '.' or '_' or '~')
             {
                 builder.Append(ch);
@@ -459,10 +461,4 @@ public static class SpdxBuilder
 
         return builder.ToString();
     }
-}
-
-public sealed class SpdxDraft(string text, string prefix)
-{
-    internal string Text { get; } = text;
-    internal string Prefix { get; } = prefix;
 }

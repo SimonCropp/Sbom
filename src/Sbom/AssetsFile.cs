@@ -68,8 +68,8 @@ public static class AssetsFile
                 continue;
             }
 
-            var id = entry.Key.Substring(0, slash);
-            var version = entry.Key.Substring(slash + 1);
+            var id = entry.Key[..slash];
+            var version = entry.Key[(slash + 1)..];
             var kind = DependencyKind.Package;
             if (string.Equals(value.TryGetValue("type", out var type) ? type as string : null, "project", StringComparison.OrdinalIgnoreCase))
             {
@@ -118,7 +118,7 @@ public static class AssetsFile
                 var id = text;
                 if (space > 0)
                 {
-                    id = text.Substring(0, space);
+                    id = text[..space];
                 }
 
                 if (resolved.TryGetValue(id, out var direct))

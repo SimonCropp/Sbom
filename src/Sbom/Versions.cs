@@ -12,8 +12,8 @@ public static class Versions
         var plus = version.IndexOf('+');
         if (plus >= 0)
         {
-            metadata = version.Substring(plus);
-            version = version.Substring(0, plus);
+            metadata = version[plus..];
+            version = version[..plus];
         }
 
         var dash = version.IndexOf('-');
@@ -21,8 +21,8 @@ public static class Versions
         var suffix = "";
         if (dash >= 0)
         {
-            release = version.Substring(0, dash);
-            suffix = version.Substring(dash);
+            release = version[..dash];
+            suffix = version[dash..];
         }
 
         var parts = release.Split('.').ToList();

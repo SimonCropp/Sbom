@@ -146,7 +146,7 @@ public sealed class NuspecMetadata
             return null;
         }
 
-        var expression = Uri.UnescapeDataString(url.Substring(licensesPrefix.Length)).Trim();
+        var expression = Uri.UnescapeDataString(url[licensesPrefix.Length..]).Trim();
         if (expression.Length == 0)
         {
             return null;

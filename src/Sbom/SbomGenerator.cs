@@ -2,42 +2,6 @@ namespace Sbom;
 
 public sealed record ReferenceInfo(string Id, bool IsPrivate);
 
-public sealed class SbomRequest
-{
-    public string ManifestFile { get; init; } = "";
-    public string NuspecFile { get; init; } = "";
-    public NuspecMetadata Root { get; init; } = new();
-    public string LockFile { get; init; } = "";
-    public string AssetsFile { get; init; } = "";
-    public string PackageRoot { get; init; } = "";
-    public IReadOnlyList<ReferenceInfo> References { get; init; } = [];
-    public string? Supplier { get; init; }
-    public string? NamespaceBaseUri { get; init; }
-    public string? DeterministicTimestamp { get; init; }
-    public string? SourceDateEpoch { get; init; }
-    public bool MicrosoftSbomActive { get; init; }
-    public string ToolVersion { get; init; } = "0.0.0";
-    public Func<DateTimeOffset> Now { get; init; } = () => DateTimeOffset.UtcNow;
-}
-
-public sealed class SbomResult
-{
-    public List<Diagnostic> Diagnostics { get; } = [];
-
-    /// <summary>
-    /// The manifest and its sidecar on disk, for NuGet to pack. Empty when there is no SBOM.
-    /// </summary>
-    public List<string> Files { get; } = [];
-
-    /// <summary>
-    /// False when the manifest on disk already had these exact bytes and was left alone.
-    /// </summary>
-    public bool Written { get; set; }
-
-    public int Dependencies { get; set; }
-    public long ElapsedMilliseconds { get; set; }
-}
-
 public static class SbomGenerator
 {
     public const string PackagePath = "_manifest/spdx_3.0/manifest.spdx.json";

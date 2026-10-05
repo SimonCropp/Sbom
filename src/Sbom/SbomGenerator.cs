@@ -34,27 +34,29 @@ public static class SbomGenerator
 
         // The lock file is preferred: it is committed, and RestoreLockedMode can enforce it. Without
         // one, the assets file restore always writes holds the same resolved graph.
-        var hasLockFile = request.LockFile.Length > 0 && File.Exists(request.LockFile);
-        var hasAssetsFile = request.AssetsFile.Length > 0 && File.Exists(request.AssetsFile);
+        var lockFile = request.LockFile;
+        var hasLockFile = lockFile.Length > 0 && File.Exists(lockFile);
+        var assetsFile = request.AssetsFile;
+        var hasAssetsFile = assetsFile.Length > 0 && File.Exists(assetsFile);
         if (!hasLockFile && !hasAssetsFile)
         {
             diagnostics.Add(
                 new(
                     Diagnostics.LockFileMissing,
                     Severity.Error,
-                    $"Neither '{request.LockFile}' nor '{request.AssetsFile}' exists, so the dependency graph is unknown. Restore the project before packing."));
+                    $"Neither '{lockFile}' nor '{assetsFile}' exists, so the dependency graph is unknown. Restore the project before packing."));
             return result;
         }
 
         if (hasLockFile &&
             hasAssetsFile &&
-            File.GetLastWriteTimeUtc(request.LockFile) < File.GetLastWriteTimeUtc(request.AssetsFile).AddSeconds(-2))
+            File.GetLastWriteTimeUtc(lockFile) < File.GetLastWriteTimeUtc(assetsFile).AddSeconds(-2))
         {
             diagnostics.Add(
                 new(
                     Diagnostics.LockFileStale,
                     Severity.Warning,
-                    $"'{request.LockFile}' is older than the last restore. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
+                    $"'{lockFile}' is older than the last restore. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
         }
 
         var root = request.Root;

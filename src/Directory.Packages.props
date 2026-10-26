@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="DiffEngine" Version="20.8.2" />
-    <PackageVersion Include="JsonSchema.Net" Version="9.4.1" />
+    <PackageVersion Include="JsonSchema.Net" Version="9.5.0" />
     <PackageVersion Include="MarkdownSnippets.MsBuild" Version="28.5.1" />
     <PackageVersion Include="Microsoft.Build.Framework" Version="18.9.6" Pinned="true" />
     <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="18.9.6" Pinned="true" />

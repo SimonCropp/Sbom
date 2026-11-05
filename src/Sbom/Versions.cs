@@ -45,6 +45,6 @@ public static class Versions
             numbers.RemoveAt(3);
         }
 
-        return string.Join(".", numbers) + suffix + metadata;
+        return string.Join('.', numbers) + suffix + metadata;
     }
 }

@@ -41,7 +41,7 @@ public class SbomTask : Task
                 AssetsFile = AssetsFile,
                 PackageRoot = PackageRoot,
                 References = References
-                    .Select(_ => new ReferenceInfo(_.ItemSpec, IsPrivate(_.GetMetadata("PrivateAssets"))))
+                    .Select(_ => new ReferenceInfo(_.ItemSpec, IsPrivate(_.GetMetadata("PrivateAssets")), Clean(_.GetMetadata("ProjectPath"))))
                     .ToList(),
                 Supplier = Supplier,
                 NamespaceBaseUri = NamespaceBaseUri,

@@ -1,5 +1,8 @@
 namespace Sbom;
 
+// ProjectNames: referenced projects' NuGet names, by full project path.
+public sealed record AssetsContent(List<LockedDependency> Dependencies, Dictionary<string, string> ProjectNames);
+
 /// <summary>
 /// Reads obj/project.assets.json, the resolved graph restore always writes. Used when the project
 /// has no packages.lock.json. It carries the same information: every resolved library per
@@ -7,19 +10,24 @@ namespace Sbom;
 /// </summary>
 public static class AssetsFile
 {
-    public static List<LockedDependency> Read(string path) =>
+    public static AssetsContent Read(string path) =>
         ReadText(File.ReadAllText(path));
 
-    public static List<LockedDependency> ReadText(string json)
+    public static AssetsContent ReadText(string json)
     {
-        if (JsonReader.Parse(json) is not JsonObject root ||
-            !root.TryGetValue("targets", out var targetsValue) ||
-            targetsValue is not JsonObject targets)
+        if (JsonReader.Parse(json) is not JsonObject root)
         {
-            return [];
+            return new([], []);
         }
 
         var libraries = root.TryGetValue("libraries", out var librariesValue) ? librariesValue as JsonObject : null;
+        var projectNames = ProjectNames(root, libraries);
+        if (!root.TryGetValue("targets", out var targetsValue) ||
+            targetsValue is not JsonObject targets)
+        {
+            return new([], projectNames);
+        }
+
         var groups = root.TryGetValue("projectFileDependencyGroups", out var groupsValue) ? groupsValue as JsonObject : null;
         var byKey = new Dictionary<string, LockedDependency>(StringComparer.Ordinal);
 
@@ -40,9 +48,52 @@ public static class AssetsFile
             ReadTarget(entries, group as List<object?>, libraries, byKey);
         }
 
-        return byKey.Values
+        var dependencies = byKey.Values
             .OrderBy(_ => _.Key, StringComparer.Ordinal)
             .ToList();
+        return new(dependencies, projectNames);
+    }
+
+    /// <summary>
+    /// NuGet names a referenced project by its PackageId (else AssemblyName, else file name), which
+    /// only that project's own evaluation knows. Its library entry records the project's path
+    /// relative to the restored project, so the name can be found from a reference's full path.
+    /// </summary>
+    static Dictionary<string, string> ProjectNames(JsonObject root, JsonObject? libraries)
+    {
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (libraries == null ||
+            !root.TryGetValue("project", out var projectValue) ||
+            projectValue is not JsonObject project ||
+            !project.TryGetValue("restore", out var restoreValue) ||
+            restoreValue is not JsonObject restore ||
+            !restore.TryGetValue("projectPath", out var projectPathValue) ||
+            projectPathValue is not string { Length: > 0 } projectPath)
+        {
+            return names;
+        }
+
+        var directory = Path.GetDirectoryName(projectPath)!;
+        foreach (var library in libraries)
+        {
+            if (library.Value is not JsonObject value ||
+                !string.Equals(value.TryGetValue("type", out var type) ? type as string : null, "project", StringComparison.OrdinalIgnoreCase) ||
+                !value.TryGetValue("msbuildProject", out var pathValue) ||
+                pathValue is not string { Length: > 0 } relative)
+            {
+                continue;
+            }
+
+            var slash = library.Key.IndexOf('/');
+            if (slash <= 0)
+            {
+                continue;
+            }
+
+            names[Path.GetFullPath(Path.Combine(directory, relative))] = library.Key.Substring(0, slash);
+        }
+
+        return names;
     }
 
     static void ReadTarget(

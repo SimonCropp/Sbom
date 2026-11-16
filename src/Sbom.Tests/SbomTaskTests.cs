@@ -269,7 +269,7 @@ public class SbomTaskTests
                 "net10.0": [ "A >= 1.0.0" ]
               }
             }
-            """);
+            """).Dependencies;
         return Verify(graph.Select(_ => $"{_.Id} {_.Version} {_.Kind} direct:{_.IsDirect} -> {string.Join(",", _.DependsOn)}"))
             .Snapshot(
                 """
@@ -313,11 +313,28 @@ public class SbomTaskTests
         await Assert.That(engine.Messages.Any(_ => _.Code == Diagnostics.NuspecMissing && _.Message!.Contains("Inner 1.0.0"))).IsTrue();
     }
 
+    /// <summary>
+    /// An assets file resolving the setup's lock file, with Inner at the given version.
+    /// </summary>
+    static string Assets(string innerVersion) =>
+        $$"""
+        {
+          "version": 4,
+          "targets": {
+            "net10.0": {
+              "Dep/2.0.0": { "type": "package", "dependencies": { "Inner": "1.0.0" } },
+              "Inner/{{innerVersion}}": { "type": "package" },
+              "Analyzer/1.0.0": { "type": "package" }
+            }
+          }
+        }
+        """;
+
     [Test]
     public async Task StaleLockFileWarnsButStillWrites()
     {
         using var setup = new Setup();
-        var assets = setup.Temp.Write("obj/project.assets.json", "{}");
+        var assets = setup.Temp.Write("obj/project.assets.json", Assets("1.1.0"));
         File.SetLastWriteTimeUtc(setup.LockFile, DateTime.UtcNow.AddHours(-1));
         File.SetLastWriteTimeUtc(assets, DateTime.UtcNow);
         var (task, engine) = setup.Task();
@@ -329,10 +346,25 @@ public class SbomTaskTests
     }
 
     [Test]
+    public async Task OlderLockFileWithTheSamePackagesDoesNotWarn()
+    {
+        // Restore leaves an unchanged lock file alone: a fresh clone, or any locked-mode restore.
+        using var setup = new Setup();
+        var assets = setup.Temp.Write("obj/project.assets.json", Assets("1.0.0"));
+        File.SetLastWriteTimeUtc(setup.LockFile, DateTime.UtcNow.AddHours(-1));
+        File.SetLastWriteTimeUtc(assets, DateTime.UtcNow);
+        var (task, engine) = setup.Task();
+        task.AssetsFile = assets;
+
+        await Assert.That(task.Execute()).IsTrue();
+        await Assert.That(engine.Warnings).IsEmpty();
+    }
+
+    [Test]
     public async Task FreshLockFileDoesNotWarn()
     {
         using var setup = new Setup();
-        var assets = setup.Temp.Write("obj/project.assets.json", "{}");
+        var assets = setup.Temp.Write("obj/project.assets.json", Assets("1.1.0"));
         File.SetLastWriteTimeUtc(assets, DateTime.UtcNow.AddHours(-1));
         File.SetLastWriteTimeUtc(setup.LockFile, DateTime.UtcNow);
         var (task, engine) = setup.Task();
@@ -340,6 +372,69 @@ public class SbomTaskTests
 
         await Assert.That(task.Execute()).IsTrue();
         await Assert.That(engine.Warnings).IsEmpty();
+    }
+
+    [Test]
+    public async Task ProjectReferenceIsMatchedByItsNuGetName()
+    {
+        using var setup = new Setup();
+        File.WriteAllText(
+            setup.LockFile,
+            """
+            {
+              "version": 2,
+              "dependencies": {
+                "net10.0": {
+                  "Dep": { "type": "Direct", "requested": "[2.0.0, )", "resolved": "2.0.0" },
+                  "Acme.Lib": { "type": "Project" }
+                }
+              }
+            }
+            """);
+        var project = setup.Temp.Combine("App", "App.csproj");
+        var assets = setup.Temp.Write(
+            "App/obj/project.assets.json",
+            $$"""
+            {
+              "version": 4,
+              "targets": {
+                "net10.0": {
+                  "Dep/2.0.0": { "type": "package" },
+                  "Acme.Lib/1.0.0": { "type": "project" }
+                }
+              },
+              "libraries": {
+                "Acme.Lib/1.0.0": {
+                  "type": "project",
+                  "path": "../Lib/Lib.csproj",
+                  "msbuildProject": "../Lib/Lib.csproj"
+                }
+              },
+              "project": {
+                "restore": {
+                  "projectPath": "{{project.Replace("\\", "\\\\")}}"
+                }
+              }
+            }
+            """);
+        var (task, _) = setup.Task();
+        task.AssetsFile = assets;
+        task.References =
+        [
+            new TaskItem("Dep"),
+            new TaskItem(
+                "Lib",
+                new Dictionary<string, string>
+                {
+                    ["PrivateAssets"] = "all",
+                    ["ProjectPath"] = setup.Temp.Combine("Lib", "Lib.csproj")
+                })
+        ];
+
+        await Assert.That(task.Execute()).IsTrue();
+        var json = setup.Json;
+        await Assert.That(Scoped(json, "build")).IsEqualTo(1);
+        await Assert.That(Scoped(json, "runtime")).IsEqualTo(1);
     }
 
     [Test]

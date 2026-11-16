@@ -108,6 +108,37 @@ public class AuthorPackTests
     }
 
     [Test]
+    public async Task PrivateProjectReferenceIsMatchedByPackageId()
+    {
+        var result = await AuthorPack.Pack("Author.PrivateProject", Path.Combine("App", "App.csproj"));
+        await Assert.That(result.Cli.ExitCode).IsEqualTo(0).Because(result.Cli.Combined);
+        var graph = Graph(result.Manifest);
+
+        // The lock file names Lib.csproj "Acme.Lib", so its PrivateAssets=all is only found by path.
+        await Assert.That(Scoped(graph, "build").Any(IsLib)).IsTrue();
+        await Assert.That(Scoped(graph, "runtime").Any(IsLib)).IsFalse();
+
+        static bool IsLib(string purl) =>
+            purl.StartsWith("pkg:nuget/Acme.Lib", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task DeletedSidecarIsRegenerated()
+    {
+        var first = await AuthorPack.Pack("Author.Basic", "Author.Basic.csproj");
+        await Assert.That(first.Cli.ExitCode).IsEqualTo(0).Because(first.Cli.Combined);
+        var sidecar = Path.Combine(first.WorkDirectory, "obj", "Release", "sbom", "manifest.spdx.json.sha256");
+        File.Delete(sidecar);
+
+        var second = await AuthorPack.Repack(first.WorkDirectory, "Author.Basic.csproj", clean: false);
+        await Assert.That(second.Cli.ExitCode).IsEqualTo(0).Because(second.Cli.Combined);
+        await Assert.That(File.Exists(sidecar)).IsTrue();
+        var manifest = second.Entry("_manifest/spdx_3.0/manifest.spdx.json");
+        await Assert.That(Encoding.ASCII.GetString(second.Entry("_manifest/spdx_3.0/manifest.spdx.json.sha256")))
+            .IsEqualTo(Convert.ToHexStringLower(SHA256.HashData(manifest)));
+    }
+
+    [Test]
     public async Task SourceDateEpochMakesTheManifestReproducible()
     {
         var properties = new Dictionary<string, string>

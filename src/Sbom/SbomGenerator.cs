@@ -192,11 +192,12 @@ public static class SbomGenerator
     static bool SamePackages(List<LockedDependency> left, List<LockedDependency> right)
     {
         static HashSet<string> Packages(List<LockedDependency> dependencies) =>
-            new(
-                dependencies
-                    .Where(_ => _.Kind == DependencyKind.Package)
-                    .Select(_ => _.Key),
-                StringComparer.Ordinal);
+        [
+            with(StringComparer.Ordinal),
+            .. dependencies
+                .Where(_ => _.Kind == DependencyKind.Package)
+                .Select(_ => _.Key)
+        ];
 
         return Packages(left).SetEquals(Packages(right));
     }

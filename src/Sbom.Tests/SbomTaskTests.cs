@@ -378,7 +378,7 @@ public class SbomTaskTests
     public async Task ProjectReferenceIsMatchedByItsNuGetName()
     {
         using var setup = new Setup();
-        File.WriteAllText(
+        await File.WriteAllTextAsync(
             setup.LockFile,
             """
             {

@@ -37,7 +37,7 @@
     <!-- _PackageFiles is what PackTask packs; NuGetPackInput is what decides whether GenerateNuspec
          is up to date, and was computed before this target ran. A NuspecFile pack ignores
          _PackageFiles, and the task has said so (Sbom010). -->
-    <ItemGroup Condition="'$(_Sbom_Enabled)' == 'true' and '$(NuspecFile)' == '' and Exists('$(_Sbom_ManifestFile)')">
+    <ItemGroup Condition="'$(_Sbom_Enabled)' == 'true' and '$(NuspecFile)' == '' and Exists('$(_Sbom_ManifestFile)') and Exists('$(_Sbom_ManifestFile).sha256')">
       <_Sbom_PackageFile Include="$(_Sbom_ManifestFile);$(_Sbom_ManifestFile).sha256" PackagePath="_manifest/spdx_3.0/" />
       <_PackageFiles Include="@(_Sbom_PackageFile)" />
       <NuGetPackInput Include="@(_Sbom_PackageFile)" />
@@ -101,8 +101,8 @@
                       Overwrite="true"
                       WriteOnlyWhenDifferent="true" />
 
-    <!-- A manifest deleted by hand is regenerated. -->
-    <Delete Condition="!Exists('$(_Sbom_ManifestFile)')" Files="$(_Sbom_StampFile)" />
+    <!-- A manifest or sidecar deleted by hand is regenerated: both are handed to NuGet. -->
+    <Delete Condition="!Exists('$(_Sbom_ManifestFile)') or !Exists('$(_Sbom_ManifestFile).sha256')" Files="$(_Sbom_StampFile)" />
 
     <ItemGroup Condition="'$(_Sbom_Enabled)' == 'true'">
       <!-- MSBuildAllProjects holds the newest imported project file: the project itself,
@@ -164,8 +164,9 @@
     <Touch Files="$(_Sbom_StampFile)" AlwaysCreate="true" />
   </Target>
 
-  <!-- Called per target framework. Project references are keyed by file name, which is how the
-       lock file names them. -->
+  <!-- Called per target framework. NuGet names a referenced project by its PackageId, which only
+       that project's evaluation knows, so each carries its full path for the task to look the name
+       up in the assets file; the file name is the fallback. -->
   <Target Name="_Sbom_GetReferences" Returns="@(_Sbom_FrameworkReference)">
     <ItemGroup>
       <!-- Implicit references included: NETStandard.Library carries PrivateAssets=All on its implicit
@@ -173,6 +174,7 @@
       <_Sbom_FrameworkReference Include="@(PackageReference)" />
       <_Sbom_FrameworkReference Include="%(ProjectReference.Filename)"
                                 PrivateAssets="%(ProjectReference.PrivateAssets)"
+                                ProjectPath="%(ProjectReference.FullPath)"
                                 Condition="'@(ProjectReference)' != ''" />
     </ItemGroup>
   </Target>

@@ -1,6 +1,7 @@
 namespace Sbom;
 
-public sealed record ReferenceInfo(string Id, bool IsPrivate);
+// ProjectPath: the full path of a ProjectReference, null for a PackageReference.
+public sealed record ReferenceInfo(string Id, bool IsPrivate, string? ProjectPath = null);
 
 public static class SbomGenerator
 {
@@ -48,15 +49,33 @@ public static class SbomGenerator
             return result;
         }
 
+        // Parsed at most once, and only when something needs it.
+        AssetsContent? assets = null;
+        AssetsContent Assets() => assets ??= AssetsFile.Read(assetsFile);
+
+        List<LockedDependency> locked;
+        if (hasLockFile)
+        {
+            locked = LockFile.Read(lockFile);
+        }
+        else
+        {
+            locked = Assets().Dependencies;
+        }
+
+        // Restore never rewrites a lock file whose content is unchanged, so one older than the
+        // assets file is normal (a fresh clone, any locked-mode restore). Only a lock file not
+        // written by the last restore can be newer, and only different packages make it stale.
         if (hasLockFile &&
             hasAssetsFile &&
-            File.GetLastWriteTimeUtc(lockFile) < File.GetLastWriteTimeUtc(assetsFile).AddSeconds(-2))
+            File.GetLastWriteTimeUtc(lockFile) < File.GetLastWriteTimeUtc(assetsFile).AddSeconds(-2) &&
+            !SamePackages(locked, Assets().Dependencies))
         {
             diagnostics.Add(
                 new(
                     Diagnostics.LockFileStale,
                     Severity.Warning,
-                    $"'{lockFile}' is older than the last restore. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
+                    $"'{lockFile}' lists different packages from '{assetsFile}', so the last restore did not use it. Restore with RestoreLockedMode on CI to guarantee the lock file matches what was built."));
         }
 
         var root = request.Root;
@@ -65,7 +84,7 @@ public static class SbomGenerator
             root.Version = Versions.Normalize(root.Version);
         }
 
-        var dependencies = BuildDependencies(request, hasLockFile, diagnostics);
+        var dependencies = BuildDependencies(request, locked, hasAssetsFile, Assets, diagnostics);
 
         var draft = SpdxBuilder.Draft(
             new()
@@ -170,30 +189,39 @@ public static class SbomGenerator
         return true;
     }
 
-    static List<SbomDependency> BuildDependencies(SbomRequest request, bool hasLockFile, List<Diagnostic> diagnostics)
+    static bool SamePackages(List<LockedDependency> left, List<LockedDependency> right)
     {
-        List<LockedDependency> locked;
-        if (hasLockFile)
-        {
-            locked = LockFile.Read(request.LockFile);
-        }
-        else
-        {
-            locked = AssetsFile.Read(request.AssetsFile);
-        }
+        static HashSet<string> Packages(List<LockedDependency> dependencies) =>
+        [
+            with(StringComparer.Ordinal),
+            .. dependencies
+                .Where(_ => _.Kind == DependencyKind.Package)
+                .Select(_ => _.Key)
+        ];
 
+        return Packages(left).SetEquals(Packages(right));
+    }
+
+    static List<SbomDependency> BuildDependencies(
+        SbomRequest request,
+        List<LockedDependency> locked,
+        bool hasAssetsFile,
+        Func<AssetsContent> assets,
+        List<Diagnostic> diagnostics)
+    {
         // A direct reference is build-only when every PackageReference/ProjectReference item for it,
         // across every target framework, is PrivateAssets=all.
         var privacy = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var reference in request.References)
         {
-            if (privacy.TryGetValue(reference.Id, out var existing))
+            var id = ReferenceId(reference, hasAssetsFile, assets);
+            if (privacy.TryGetValue(id, out var existing))
             {
-                privacy[reference.Id] = existing && reference.IsPrivate;
+                privacy[id] = existing && reference.IsPrivate;
                 continue;
             }
 
-            privacy[reference.Id] = reference.IsPrivate;
+            privacy[id] = reference.IsPrivate;
         }
 
         // Opening each nuspec dominates generation (file-open latency, not parsing), so they are read
@@ -250,6 +278,26 @@ public static class SbomGenerator
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// The lock and assets files name a project by its PackageId, which the reference's file name
+    /// only matches by default. The assets file maps the project's path to that name.
+    /// </summary>
+    static string ReferenceId(ReferenceInfo reference, bool hasAssetsFile, Func<AssetsContent> assets)
+    {
+        if (reference.ProjectPath == null ||
+            !hasAssetsFile)
+        {
+            return reference.Id;
+        }
+
+        if (assets().ProjectNames.TryGetValue(Path.GetFullPath(reference.ProjectPath), out var name))
+        {
+            return name;
+        }
+
+        return reference.Id;
     }
 
     static NuspecMetadata? ReadMetadata(string packageRoot, string id, string version)

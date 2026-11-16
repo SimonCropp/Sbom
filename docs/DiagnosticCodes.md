@@ -33,9 +33,11 @@ against a different folder. Those packages are listed without supplier, license,
 
 **NuGet lock file may be stale.** Warning.
 
-`packages.lock.json` is older than `project.assets.json`, so the last restore may not have written
-it. The SBOM describes the lock file. Restoring with `RestoreLockedMode` on CI guarantees the two
-match:
+`packages.lock.json` lists different packages from `project.assets.json`, so the last restore did
+not use it, for example because it ran with `RestorePackagesWithLockFile=false`. The SBOM describes
+the lock file. Restore leaves an unchanged lock file alone, so a lock file older than the assets
+file is normal and only differing packages raise this. Restoring with `RestoreLockedMode` on CI
+guarantees the two match:
 
 ```xml
 <PropertyGroup>

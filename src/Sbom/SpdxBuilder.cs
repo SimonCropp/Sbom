@@ -153,11 +153,7 @@ public static class SpdxBuilder
             .Set("externalIdentifier", PurlIdentifier($"pkg:nuget/Sbom@{Percent(input.ToolVersion)}")));
 
         var supplier = builder.Agent(input.Supplier ?? root.Authors);
-        var createdBy = supplier;
-        if (createdBy == null)
-        {
-            createdBy = builder.Add(4, toolName, "tool-agent", "SoftwareAgent", new JsonObject().Set("name", toolName));
-        }
+        var createdBy = supplier ?? builder.Add(4, toolName, "tool-agent", "SoftwareAgent", new JsonObject().Set("name", toolName));
 
         var dataLicense = builder.License("CC0-1.0");
 
@@ -332,14 +328,14 @@ public static class SpdxBuilder
             .Set("createdBy", new List<object> { builder.Iri(createdBy) })
             .Set("createdUsing", new List<object> { builder.Iri("tool") });
 
-        var graph = new List<object>
-        {
+        List<object> graph =
+        [
             creation,
             document,
-            sbom
-        };
-        graph.AddRange(ordered.Select(object (_) => _.Body));
-        graph.AddRange(relationshipElements.Select(object (_) => _.Body));
+            sbom,
+            .. ordered.Select(object (_) => _.Body),
+            .. relationshipElements.Select(object (_) => _.Body)
+        ];
 
         return new JsonObject()
             .Set("@context", context)

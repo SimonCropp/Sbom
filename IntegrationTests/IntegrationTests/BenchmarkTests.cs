@@ -107,6 +107,7 @@ public class BenchmarkTests
                 ["MSBUILDDISABLENODEREUSE"] = "1"
             }
         };
+        DotnetCliRunner.IsolateSdk(info);
         foreach (var argument in new[]
                  {
                      "pack", Path.Combine(work, project), "--no-build", "--configuration", "Release",

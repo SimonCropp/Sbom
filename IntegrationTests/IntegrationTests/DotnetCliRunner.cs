@@ -23,6 +23,7 @@ public static class DotnetCliRunner
                 ["DOTNET_CLI_TELEMETRY_OPTOUT"] = "true"
             }
         };
+        IsolateSdk(info);
         if (packagesDirectory != null)
         {
             // Without an isolated package directory the global cache serves a previously restored
@@ -60,6 +61,19 @@ public static class DotnetCliRunner
     }
 
     /// <summary>
+    /// `dotnet run` points MSBuildExtensionsPath and MSBuildSDKsPath at the SDK running the tests,
+    /// and a child process inherits them. A fixture's global.json can select a different SDK, whose
+    /// MSBuild would then load the other SDK's targets and fail to start their task host (MSB4216).
+    /// Cleared so each child resolves its own SDK.
+    /// </summary>
+    public static void IsolateSdk(ProcessStartInfo info)
+    {
+        info.Environment.Remove("MSBuildExtensionsPath");
+        info.Environment.Remove("MSBuildSDKsPath");
+        info.Environment.Remove("MSBUILD_EXE_PATH");
+    }
+
+    /// <summary>
     /// Resolved in the given directory, because SDK selection depends on the global.json in scope
     /// there. Asking in the repo and then building somewhere else can answer about a different SDK
     /// than the one that runs the build.
@@ -73,6 +87,7 @@ public static class DotnetCliRunner
             CreateNoWindow = true,
             WorkingDirectory = workingDirectory
         };
+        IsolateSdk(info);
         using var process = Process.Start(info)!;
         var version = process.StandardOutput.ReadToEnd().Trim();
         process.WaitForExit();
